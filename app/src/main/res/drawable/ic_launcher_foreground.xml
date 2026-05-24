@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Inner spiral evoking TSGB's twin-scroll rotor; kept simple so a 48dp launcher remains legible. -->
+    <path
+        android:fillColor="#C8102E"
+        android:pathData="M54,30 m-22,0 a22,22 0 1,0 44,0 a22,22 0 1,0 -44,0 z M54,38 m-14,0 a14,14 0 1,0 28,0 a14,14 0 1,0 -28,0 z" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3"
+        android:fillColor="#00000000"
+        android:pathData="M54,46 L54,72 M40,62 L68,62" />
+</vector>

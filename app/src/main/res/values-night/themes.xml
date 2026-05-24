@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.TsgbHeater" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">#012169</item>
+        <item name="android:windowBackground">#F1F3F9</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
