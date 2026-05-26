@@ -1,16 +1,95 @@
+# ----------------------------------------------------------------------------
+# Cross-platform / editor noise
+# ----------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# ----------------------------------------------------------------------------
+# Android (Gradle / Android Studio / Kotlin)
+# ----------------------------------------------------------------------------
 *.iml
 .gradle/
+.kotlin/
 local.properties
 .idea/
-.DS_Store
 build/
 captures/
 .externalNativeBuild/
 .cxx/
-.kotlin/
+
+# Signing material — never commit
 *.jks
 *.keystore
 google-services.json
+
 # JVM/Gradle daemon crash artifacts
 hs_err_pid*.log
 replay_pid*.log
+
+# ----------------------------------------------------------------------------
+# Windows / .NET (Visual Studio / Rider / dotnet build)
+# ----------------------------------------------------------------------------
+# Build output
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio user-local state
+*.user
+*.suo
+*.userprefs
+*.userosscache
+*.sln.docstates
+.vs/
+
+# Rider / JetBrains
+.idea/
+*.DotSettings.user
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+project.lock.json
+project.fragment.lock.json
+*.nuget.props
+*.nuget.targets
+
+# MSBuild / debug
+*.pdb
+*.tlog
+*.cache
+*.vspscc
+*.vssscc
+
+# Publish output
+publish/
+PublishProfiles/
+*.[Pp]ublish.xml
+*.azurePubxml
+
+# Code coverage / test
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+coverage*.xml
+coverage*.json
+
+# ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+
+# Runtime / Local app state we don't want committed
+*.pfx
+*.p12
+paired-clients.json
+server.pfx
+
+# ----------------------------------------------------------------------------
+# Reverse-engineered reference material — third-party, never push
+# ----------------------------------------------------------------------------
+OLDSRC/

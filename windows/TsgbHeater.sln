@@ -1,0 +1,16 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TsgbHeater", "src\TsgbHeater\TsgbHeater.csproj", "{8B3D5C1F-2A6E-4C9B-9D1E-7F4C2B6E9A3F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8B3D5C1F-2A6E-4C9B-9D1E-7F4C2B6E9A3F}.Debug|x64.ActiveCfg = Debug|x64
+		{8B3D5C1F-2A6E-4C9B-9D1E-7F4C2B6E9A3F}.Debug|x64.Build.0 = Debug|x64
+		{8B3D5C1F-2A6E-4C9B-9D1E-7F4C2B6E9A3F}.Release|x64.ActiveCfg = Release|x64
+		{8B3D5C1F-2A6E-4C9B-9D1E-7F4C2B6E9A3F}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+EndGlobal

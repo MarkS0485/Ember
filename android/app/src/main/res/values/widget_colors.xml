@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Light surfaces (mirrors Body1/InkHi/LineGrey from the Compose theme). -->
+    <color name="widget_surface">#FFFFFFFF</color>
+    <color name="widget_outline">#FFE2E5EE</color>
+    <color name="widget_ink">#FF0F172A</color>
+    <color name="widget_ink_mute">#FF6B7280</color>
+
+    <!-- Action buttons: red = ignite, blue = airflow, slate = stop. -->
+    <color name="widget_btn_red">#FFC8102E</color>
+    <color name="widget_btn_blue">#FF1D4ED8</color>
+    <color name="widget_btn_slate">#FF334155</color>
+    <color name="widget_btn_text">#FFFFFFFF</color>
+</resources>

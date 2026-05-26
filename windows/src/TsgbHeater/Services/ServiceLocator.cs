@@ -1,0 +1,51 @@
+using TsgbHeater.Api;
+using TsgbHeater.Ble;
+using TsgbHeater.Data;
+using TsgbHeater.Data.Groups;
+using TsgbHeater.Data.Schedule;
+
+namespace TsgbHeater.Services;
+
+public static class ServiceLocator
+{
+    public static HeaterClient            Ble            { get; private set; } = null!;
+    public static BoundDeviceStore        BoundDevices   { get; private set; } = null!;
+    public static AppSettings             Settings       { get; private set; } = null!;
+    public static ScheduleStore           ScheduleStore  { get; private set; } = null!;
+    public static ScheduleController      Scheduler      { get; private set; } = null!;
+    public static AutoStartStopController AutoController { get; private set; } = null!;
+    public static GroupStore              Groups         { get; private set; } = null!;
+    public static GroupController         GroupCtl       { get; private set; } = null!;
+    public static ApiServer               Api            { get; private set; } = null!;
+    public static UpnpForwarder           Upnp           { get; private set; } = null!;
+
+    private static bool _initialised;
+
+    public static void Init()
+    {
+        if (_initialised) return;
+        BoundDevices   = new BoundDeviceStore();
+        Settings       = new AppSettings();
+        Ble            = new HeaterClient();
+        ScheduleStore  = new ScheduleStore();
+        Scheduler      = new ScheduleController(Ble, ScheduleStore, Settings);
+        AutoController = new AutoStartStopController(Ble, Settings);
+        Groups         = new GroupStore();
+        GroupCtl       = new GroupController(Ble, Groups, BoundDevices);
+        Api            = new ApiServer();
+        Upnp           = new UpnpForwarder();
+        Scheduler.Start();
+        AutoController.Start();
+        _initialised = true;
+    }
+
+    public static void Dispose()
+    {
+        if (!_initialised) return;
+        _ = Api.StopAsync();
+        Upnp.Stop();
+        _ = Scheduler.DisposeAsync().AsTask();
+        _ = AutoController.DisposeAsync().AsTask();
+        _ = Ble.DisposeAsync().AsTask();
+    }
+}

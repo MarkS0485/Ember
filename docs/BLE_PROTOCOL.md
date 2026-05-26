@@ -138,7 +138,7 @@ All heater commands use the 8-byte heater frame above. `opcode` is one of the
 | Opcode | Hex  | Name                | Purpose                                |
 |-------:|-----:|---------------------|----------------------------------------|
 | 97     | 0x61 | DB0_DN_CMD          | One-shot button (on/off/up/down/etc.)  |
-| 98     | 0x62 | DB0_DN_MANU_PUMP    | (Unused in current UI dataflow.)       |
+| 98     | 0x62 | DB0_DN_MANU_PUMP    | Timed manual pump (seconds in d0)      |
 | 99     | 0x63 | DB0_DN_GET_REG_ADDR | Ask controller for its register table  |
 | 100    | 0x64 | DB0_DN_GET_REG_VAL  | Read register block by short-addr      |
 | 101    | 0x65 | DB0_DN_AUTO_UPDATA  | Start/stop periodic telemetry          |
@@ -151,7 +151,18 @@ Controller-to-app opcodes (`DB0_UP_*`):
 | 65     | 0x41 | DB0_UP_CMD_ACK      | ACK to DB0_DN_CMD (echoes random+sent) |
 | 66     | 0x42 | DB0_UP_MANU_PUMP_ACK| ACK to DB0_DN_MANU_PUMP                |
 | 67     | 0x43 | DB0_UP_REG_ADDR     | Reply with register-block address      |
-| 68     | 0x44 | DB0_UP_WRTIE_ACK    | ACK to DB0_DN_SHORT_PARA               |
+| 70     | 0x46 | DB0_UP_WRITE_ACK    | ACK to DB0_DN_SHORT_PARA               |
+
+(Decompiled JS lists this as `0x44`, but on-the-wire sniffing of a real
+controller shows `0x46`. The JS constant table appears to be stale; the
+firmware emits 0x46 for SHORT_PARA acks. Success frames echo the
+`<idx> <d1> <d2>` triplet; an unknown index returns `FF FF 02`.)
+
+Probed SHORT_PARA indices 5..12 on a TSGB controller (2026-05-25): every
+one returned `AA 00 46 FF FF 02 …` — "unknown index, error 2". There is
+no hidden altitude setter exposed via SHORT_PARA on this firmware. The
+`altitudeValue` field at regInfo offset 4 is the heater's barometric
+sensor reading only, and is not writeable over BLE.
 
 ### Start heater / stop heater / button events
 
@@ -196,6 +207,30 @@ Enum values from `Ke` (line 1541):
 
 Note: Stop-blow-mode and stop-oil-pump both go through `CMD_OFF` (12 here is
 `CMD_OIL_PUMP_OFF`, but the UI for "stop blow" uses `CMD_OFF` per line 4287).
+
+### Manual pump run (line 2484 — `iolPump()`)
+
+The vendor app's *real* manual-prime path doesn't use `CMD_OIL_PUMP_ON` —
+that button just wakes the toggle in the device-page UI. Instead, when the
+user opens the manual-pump control the app pushes a `DB0_DN_MANU_PUMP`
+frame with the desired run-time in seconds as `d0`:
+
+```js
+this.set_heaterData({name:"oilPumpTimeoutCount",value:20});
+e = []; e.push(this.heaterParaArray[2].offsetArray[7].oilPumpTimeoutCount);
+e.push(ft(255)); e.push(0);
+Qe.heaterSendCmd(Qe.heaterCmd.DB0_DN_MANU_PUMP, e);
+```
+
+```
+Pump run: AA 00 62 <secs> <rand> 00 <crcH> <crcL>
+```
+
+`<secs>` is clamped to 20..120 in the vendor app (`offsetArray[7].min/max`,
+default 20). The pump is only accepted in `runningMode == 5 (Standby)` or
+`7 (Manual-pump)`; outside those modes the controller silently drops it.
+Off goes back through `CMD_OFF` (per `iolPump()` line 2507) — not
+`CMD_OIL_PUMP_OFF`, despite the name.
 
 ### Set target temperature (line 4147)
 

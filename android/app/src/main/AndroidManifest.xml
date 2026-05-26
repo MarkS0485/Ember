@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- BLE permissions for connecting to the heater. -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="s" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Camera for the QR-code bind flow on the Scan tab. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Foreground service that hosts the live BLE link to the heater. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
+
+    <application
+        android:name=".TsgbHeaterApp"
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:theme="@style/Theme.TsgbHeater"
+        android:supportsRtl="true"
+        android:allowBackup="true"
+        tools:targetApi="34">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.TsgbHeater">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".service.HeaterService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
+
+        <activity
+            android:name=".remote.QrScannerActivity"
+            android:exported="false"
+            android:label="Pair with Windows app"
+            android:theme="@style/Theme.TsgbHeater" />
+
+        <!-- Debug relay so `adb shell am broadcast` can reach the unexported
+             foreground service. Only handles the diagnostic actions defined
+             in HeaterService — those are no-ops without an active BLE link
+             anyway, so leaving this exported is low-risk. -->
+        <receiver
+            android:name=".service.DebugBridgeReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="tsgbheater.action.DEBUG_SEND_HEX" />
+                <action android:name="tsgbheater.action.DEBUG_DUMP_TELEMETRY" />
+                <action android:name="tsgbheater.action.DEBUG_VERBOSE_RX" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".widget.HeaterWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_heater_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.HeaterStatusWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_status_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_status_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.HeaterControlWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_heater_only_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_heater_only_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.BlowerControlWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_blower_only_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_blower_only_info" />
+        </receiver>
+    </application>
+</manifest>

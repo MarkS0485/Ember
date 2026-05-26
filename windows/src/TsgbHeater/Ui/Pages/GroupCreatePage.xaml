@@ -1,0 +1,50 @@
+<UserControl x:Class="TsgbHeater.Ui.Pages.GroupCreatePage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="clr-namespace:TsgbHeater.Ui.Controls"
+             Background="{StaticResource Body0}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <c:BrandTopBar Grid.Row="0" Title="New group"
+                       Subtitle="Pick heaters to control together" ShowBack="True"/>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="16">
+                <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="Group name" Style="{StaticResource H2}"/>
+                        <TextBox x:Name="NameBox" Padding="8" FontSize="14"
+                                 Text="My group" Margin="0,6,0,0"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Members" Style="{StaticResource H2}"/>
+                        <ItemsControl x:Name="MemberList" Margin="0,6,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,4">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <CheckBox Grid.Column="0" IsChecked="{Binding Selected, Mode=TwoWay}"
+                                                  VerticalAlignment="Center"/>
+                                        <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                            <TextBlock Text="{Binding Name}" Style="{StaticResource H2}"/>
+                                            <TextBlock Text="{Binding Mac}" Style="{StaticResource Mono}" FontSize="11"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Button Style="{StaticResource PrimaryButton}" Content="Create"
+                                Margin="0,12,0,0" HorizontalAlignment="Right" Click="OnCreate"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

@@ -1,0 +1,56 @@
+<UserControl x:Class="TsgbHeater.Ui.Pages.FlagsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="clr-namespace:TsgbHeater.Ui.Controls"
+             xmlns:vm="clr-namespace:TsgbHeater.Ui.ViewModels"
+             Background="{StaticResource Body0}">
+    <UserControl.DataContext>
+        <vm:FlagsViewModel/>
+    </UserControl.DataContext>
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <c:PageHeader Grid.Row="0" Title="Active flags"
+                      Subtitle="{Binding Summary}"/>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <Border Style="{StaticResource Card}" Margin="0,0,0,10"
+                        Visibility="{Binding HasFaults, Converter={StaticResource BoolToVisInv}}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource H2}" Foreground="{StaticResource OkGreen}"
+                                   Text="No active faults"/>
+                        <TextBlock Style="{StaticResource Caption}"
+                                   Text="Heater reports a clean fault bitmask."/>
+                    </StackPanel>
+                </Border>
+                <ItemsControl ItemsSource="{Binding Active}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource Card}" Margin="0,0,0,8">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding Code}"
+                                                   Style="{StaticResource H2}"
+                                                   FontFamily="Consolas"
+                                                   Foreground="{StaticResource ErrRed}"
+                                                   Margin="0,0,10,0"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Short}"
+                                                   Style="{StaticResource H2}"/>
+                                    </Grid>
+                                    <TextBlock Text="{Binding Detail}" Style="{StaticResource Body}"
+                                               Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

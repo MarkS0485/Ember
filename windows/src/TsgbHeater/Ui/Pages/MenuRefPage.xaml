@@ -1,0 +1,107 @@
+<UserControl x:Class="TsgbHeater.Ui.Pages.MenuRefPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="clr-namespace:TsgbHeater.Ui.Controls"
+             Background="{StaticResource Body0}">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <c:PageHeader Grid.Row="0" Title="Protocol catalogue"
+                      Subtitle="Every command this app sends"/>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock Text="BUTTON (op 0x61)" Style="{StaticResource Caption}" Margin="4,4,0,6"/>
+                <Border Style="{StaticResource Card}" Margin="0,0,0,6"><StackPanel>
+                    <TextBlock Text="Start heater" Style="{StaticResource H2}"/>
+                    <TextBlock Text="AA 00 61 01 &lt;rand&gt; 00 crcH crcL" Style="{StaticResource Mono}"
+                               Foreground="{StaticResource TsgbNavy}"/>
+                </StackPanel></Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,0,6"><StackPanel>
+                    <TextBlock Text="Stop heater (also stops blow/pump)" Style="{StaticResource H2}"/>
+                    <TextBlock Text="AA 00 61 02 &lt;rand&gt; 00 crcH crcL" Style="{StaticResource Mono}"
+                               Foreground="{StaticResource TsgbNavy}"/>
+                </StackPanel></Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,0,6"><StackPanel>
+                    <TextBlock Text="Blow only" Style="{StaticResource H2}"/>
+                    <TextBlock Text="AA 00 61 09 &lt;rand&gt; 00 crcH crcL" Style="{StaticResource Mono}"
+                               Foreground="{StaticResource TsgbNavy}"/>
+                </StackPanel></Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,0,6"><StackPanel>
+                    <TextBlock Text="Switch to °C / °F" Style="{StaticResource H2}"/>
+                    <TextBlock Text="AA 00 61 08/0A &lt;rand&gt; 00 crcH crcL" Style="{StaticResource Mono}"
+                               Foreground="{StaticResource TsgbNavy}"/>
+                </StackPanel></Border>
+
+                <TextBlock Text="MANUAL PUMP (op 0x62)" Style="{StaticResource Caption}" Margin="4,12,0,6"/>
+                <Border Style="{StaticResource Card}" Margin="0,0,0,6"><StackPanel>
+                    <TextBlock Text="Manual pump run" Style="{StaticResource H2}"/>
+                    <TextBlock Text="AA 00 62 &lt;secs&gt; &lt;rand&gt; 00 crcH crcL" Style="{StaticResource Mono}"
+                               Foreground="{StaticResource TsgbNavy}"/>
+                    <TextBlock Text="Range 5–90 s. Heater only acts in Standby / ManualPump."
+                               Style="{StaticResource Caption}"/>
+                </StackPanel></Border>
+
+                <TextBlock Text="PARAM (op 0x66)" Style="{StaticResource Caption}" Margin="4,12,0,6"/>
+                <Border Style="{StaticResource Card}" Margin="0,0,0,6"><StackPanel>
+                    <TextBlock Text="Set run mode" Style="{StaticResource H2}"/>
+                    <TextBlock Text="AA 00 66 00 00 &lt;mode&gt; crcH crcL" Style="{StaticResource Mono}"
+                               Foreground="{StaticResource TsgbNavy}"/>
+                </StackPanel></Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,0,6"><StackPanel>
+                    <TextBlock Text="Set target temperature" Style="{StaticResource H2}"/>
+                    <TextBlock Text="AA 00 66 01 &lt;unit&gt; &lt;temp&gt; crcH crcL" Style="{StaticResource Mono}"
+                               Foreground="{StaticResource TsgbNavy}"/>
+                </StackPanel></Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,0,6"><StackPanel>
+                    <TextBlock Text="Set gear" Style="{StaticResource H2}"/>
+                    <TextBlock Text="AA 00 66 02 00 &lt;gear&gt; crcH crcL" Style="{StaticResource Mono}"
+                               Foreground="{StaticResource TsgbNavy}"/>
+                </StackPanel></Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,0,6"><StackPanel>
+                    <TextBlock Text="Set wall clock" Style="{StaticResource H2}"/>
+                    <TextBlock Text="AA 00 66 03 &lt;day&lt;&lt;5|hour&gt; &lt;min&gt; crcH crcL"
+                               Style="{StaticResource Mono}" Foreground="{StaticResource TsgbNavy}"/>
+                    <TextBlock Text="Day: Mon=0…Sun=6. Fired automatically on connect." Style="{StaticResource Caption}"/>
+                </StackPanel></Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,0,6"><StackPanel>
+                    <TextBlock Text="Set Start-Stop hysteresis" Style="{StaticResource H2}"/>
+                    <TextBlock Text="AA 00 66 04 &lt;unit&gt; &lt;diff&gt; crcH crcL" Style="{StaticResource Mono}"
+                               Foreground="{StaticResource TsgbNavy}"/>
+                </StackPanel></Border>
+
+                <TextBlock Text="STREAM (op 0x65)" Style="{StaticResource Caption}" Margin="4,12,0,6"/>
+                <Border Style="{StaticResource Card}" Margin="0,0,0,6"><StackPanel>
+                    <TextBlock Text="Start / stop telemetry stream" Style="{StaticResource H2}"/>
+                    <TextBlock Text="AA 00 65 02 0A 00 crcH crcL   (start, ~1 Hz)" Style="{StaticResource Mono}"
+                               Foreground="{StaticResource TsgbNavy}"/>
+                    <TextBlock Text="AA 00 65 02 00 1E crcH crcL   (stop)" Style="{StaticResource Mono}"
+                               Foreground="{StaticResource TsgbNavy}"/>
+                </StackPanel></Border>
+
+                <TextBlock Text="READ (op 0x64)" Style="{StaticResource Caption}" Margin="4,12,0,6"/>
+                <Border Style="{StaticResource Card}" Margin="0,0,0,6"><StackPanel>
+                    <TextBlock Text="Read regInfoArea" Style="{StaticResource H2}"/>
+                    <TextBlock Text="AA 00 64 F2 00 05 crcH crcL" Style="{StaticResource Mono}"
+                               Foreground="{StaticResource TsgbNavy}"/>
+                </StackPanel></Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,0,6"><StackPanel>
+                    <TextBlock Text="Read timerInfoArea" Style="{StaticResource H2}"/>
+                    <TextBlock Text="AA 00 64 F5 00 09 crcH crcL" Style="{StaticResource Mono}"
+                               Foreground="{StaticResource TsgbNavy}"/>
+                </StackPanel></Border>
+
+                <TextBlock Text="WRITE (op 0xFF)" Style="{StaticResource Caption}" Margin="4,12,0,6"/>
+                <Border Style="{StaticResource Card}" Margin="0,0,0,6"><StackPanel>
+                    <TextBlock Text="Write timerInfoArea (7-day schedule, double CRC)" Style="{StaticResource H2}"/>
+                    <TextBlock Text="AA &lt;len&gt; FF &lt;rand&gt; 00 00 00 F5 &lt;40-byte payload&gt; pCrc fCrc"
+                               Style="{StaticResource Mono}" Foreground="{StaticResource TsgbNavy}"/>
+                </StackPanel></Border>
+
+                <TextBlock Style="{StaticResource Caption}" Margin="4,12,0,0"
+                           Text="Sync byte AA, length byte 00 for 8-byte commands. CRC is CRC-16/XMODEM. Full citations in docs/BLE_PROTOCOL.md."/>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

@@ -1,0 +1,147 @@
+<UserControl x:Class="TsgbHeater.Ui.Pages.AutoStartStopPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="clr-namespace:TsgbHeater.Ui.Controls"
+             xmlns:vm="clr-namespace:TsgbHeater.Ui.ViewModels"
+             Background="{StaticResource Body0}">
+    <UserControl.DataContext>
+        <vm:AutoStartStopViewModel/>
+    </UserControl.DataContext>
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <c:PageHeader Grid.Row="0" Title="Auto Start / Stop"
+                      Subtitle="App-side rules engine"/>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+
+                <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Enable rules engine" Style="{StaticResource H2}"/>
+                            <TextBlock Style="{StaticResource Caption}"
+                                       Text="When on, the app starts / stops the heater based on the rules below."/>
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" IsChecked="{Binding MasterEnabled}"
+                                  VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+
+                <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Setpoint" Style="{StaticResource H2}"/>
+                            <TextBlock Grid.Column="1" Style="{StaticResource Mono}" FontSize="16"
+                                       Foreground="{StaticResource TsgbNavy}"
+                                       Text="{Binding SetpointC, StringFormat={}{0} °C}"/>
+                        </Grid>
+                        <Slider Minimum="5" Maximum="30" Value="{Binding SetpointC}"
+                                IsSnapToTickEnabled="True" TickFrequency="1" Margin="0,6,0,8"/>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Margin" Style="{StaticResource H2}"/>
+                            <TextBlock Grid.Column="1" Style="{StaticResource Mono}" FontSize="16"
+                                       Foreground="{StaticResource TsgbNavy}"
+                                       Text="{Binding MarginC, StringFormat={}± {0} °C}"/>
+                        </Grid>
+                        <Slider Minimum="1" Maximum="10" Value="{Binding MarginC}"
+                                IsSnapToTickEnabled="True" TickFrequency="1" Margin="0,6,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="Hard limits" Style="{StaticResource H2}"/>
+                        <TextBlock Style="{StaticResource Caption}"
+                                   Text="Below the start-floor we force a start regardless of setpoint; above the stop-ceiling we force a stop."/>
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Cold floor"/>
+                            <TextBlock Grid.Column="1" Style="{StaticResource Mono}"
+                                       Text="{Binding AmbientStartC, StringFormat={}{0} °C}"/>
+                        </Grid>
+                        <Slider Minimum="-5" Maximum="15" Value="{Binding AmbientStartC}"
+                                IsSnapToTickEnabled="True" TickFrequency="1" Margin="0,2,0,8"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Warm ceiling"/>
+                            <TextBlock Grid.Column="1" Style="{StaticResource Mono}"
+                                       Text="{Binding AmbientStopC, StringFormat={}{0} °C}"/>
+                        </Grid>
+                        <Slider Minimum="15" Maximum="40" Value="{Binding AmbientStopC}"
+                                IsSnapToTickEnabled="True" TickFrequency="1" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Battery cutoff" Style="{StaticResource H2}"/>
+                                <TextBlock Style="{StaticResource Caption}"
+                                           Text="Force-stop the heater if battery voltage drops below this level."/>
+                            </StackPanel>
+                            <CheckBox Grid.Column="1" IsChecked="{Binding BatteryCutoffEnabled}"
+                                      VerticalAlignment="Center"/>
+                        </Grid>
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Cutoff voltage"/>
+                            <TextBlock Grid.Column="1" Style="{StaticResource Mono}"
+                                       Text="{Binding BatteryCutoffV, StringFormat={}{0:F1} V}"/>
+                        </Grid>
+                        <Slider Minimum="10.5" Maximum="24" Value="{Binding BatteryCutoffV}"
+                                TickFrequency="0.1" IsSnapToTickEnabled="True"
+                                IsEnabled="{Binding BatteryCutoffEnabled}" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Cooldown" Style="{StaticResource H2}"/>
+                            <TextBlock Grid.Column="1" Style="{StaticResource Mono}" FontSize="16"
+                                       Text="{Binding CooldownSec, StringFormat={}{0} s}"/>
+                        </Grid>
+                        <Slider Minimum="60" Maximum="900" Value="{Binding CooldownSec}"
+                                TickFrequency="30" IsSnapToTickEnabled="True" Margin="0,6,0,0"/>
+                        <TextBlock Style="{StaticResource Caption}"
+                                   Text="Minimum time between automated start / stop actions, to stop the heater flapping."/>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

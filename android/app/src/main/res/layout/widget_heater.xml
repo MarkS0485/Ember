@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background"
+    android:padding="12dp"
+    android:weightSum="3">
+
+    <LinearLayout
+        android:id="@+id/widget_header"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/widget_temp"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="26sp"
+            android:textStyle="bold"
+            android:textColor="@color/widget_ink"
+            android:text="@string/widget_temp_placeholder" />
+
+        <TextView
+            android:id="@+id/widget_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:textColor="@color/widget_ink_mute"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:text="@string/widget_no_device" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:paddingTop="6dp"
+        android:paddingBottom="3dp">
+
+        <Button
+            android:id="@+id/widget_heater_on"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            android:minHeight="0dp"
+            android:padding="0dp"
+            android:background="@drawable/widget_btn_red"
+            android:textColor="@color/widget_btn_text"
+            android:textSize="14sp"
+            android:textAllCaps="false"
+            android:text="@string/widget_heater_on" />
+
+        <Button
+            android:id="@+id/widget_heater_off"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:minHeight="0dp"
+            android:padding="0dp"
+            android:background="@drawable/widget_btn_slate"
+            android:textColor="@color/widget_btn_text"
+            android:textSize="14sp"
+            android:textAllCaps="false"
+            android:text="@string/widget_heater_off" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:paddingTop="3dp">
+
+        <Button
+            android:id="@+id/widget_blower_on"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:layout_marginEnd="6dp"
+            android:minHeight="0dp"
+            android:padding="0dp"
+            android:background="@drawable/widget_btn_blue"
+            android:textColor="@color/widget_btn_text"
+            android:textSize="14sp"
+            android:textAllCaps="false"
+            android:text="@string/widget_blower_on" />
+
+        <Button
+            android:id="@+id/widget_blower_off"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:minHeight="0dp"
+            android:padding="0dp"
+            android:background="@drawable/widget_btn_slate"
+            android:textColor="@color/widget_btn_text"
+            android:textSize="14sp"
+            android:textAllCaps="false"
+            android:text="@string/widget_blower_off" />
+    </LinearLayout>
+</LinearLayout>
