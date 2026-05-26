@@ -1,5 +1,8 @@
 using Mono.Nat;
 using TsgbHeater.Services;
+// `Protocol` (Mono.Nat) clashes with our new `TsgbHeater.Protocol` namespace;
+// alias it so the unqualified name keeps working in this file.
+using NatProto = Mono.Nat.Protocol;
 
 namespace TsgbHeater.Api;
 
@@ -45,7 +48,7 @@ public sealed class UpnpForwarder
         {
             if (_device != null)
             {
-                var m = new Mapping(Protocol.Tcp, _port, _port, 0, "TSGB Heater API");
+                var m = new Mapping(NatProto.Tcp, _port, _port, 0, "TSGB Heater API");
                 _ = _device.DeletePortMapAsync(m);
             }
         }
@@ -60,7 +63,7 @@ public sealed class UpnpForwarder
         var dev = args.Device;
         try
         {
-            await dev.CreatePortMapAsync(new Mapping(Protocol.Tcp, _port, _port,
+            await dev.CreatePortMapAsync(new Mapping(NatProto.Tcp, _port, _port,
                 3600, "TSGB Heater API"));
             _device = dev;
             try
