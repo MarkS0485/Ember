@@ -71,12 +71,53 @@ class RemoteHeaterClient(val server: PairedServer) {
     suspend fun setRunMode(mode: String): Result<Unit> =
         post("/api/v1/heater/runmode", """{"mode":"$mode"}""")
 
+    // --- Fuel ----------------------------------------------------
+
+    suspend fun fuel(): Result<FuelResp> = withContext(Dispatchers.IO) {
+        runCatching {
+            val resp = http.newCall(Request.Builder().url("${server.baseUrl}/api/v1/fuel").build()).execute()
+            resp.use {
+                if (!it.isSuccessful) error("HTTP ${it.code}")
+                json.decodeFromString<FuelResp>(it.body?.string().orEmpty())
+            }
+        }
+    }
+
+    suspend fun refillFuel(litres: Double): Result<Unit> =
+        post("/api/v1/fuel/refill", """{"litres":$litres}""")
+
+    suspend fun setFuelLevel(litres: Double): Result<Unit> =
+        post("/api/v1/fuel/level", """{"litres":$litres}""")
+
+    suspend fun setFuelConfig(tank: Double?, low: Double?, high: Double?): Result<Unit> {
+        // Server keeps any field whose value is omitted from the JSON.
+        val parts = buildList {
+            tank?.let { add("\"tank\":$it") }
+            low?.let  { add("\"low\":$it") }
+            high?.let { add("\"high\":$it") }
+        }
+        if (parts.isEmpty()) return Result.success(Unit)
+        return put("/api/v1/fuel/config", "{${parts.joinToString(",")}}")
+    }
+
     private suspend fun post(path: String, body: String? = null): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
                 val rb = body?.toRequestBody("application/json".toMediaType()) ?: emptyJson
                 val resp = http.newCall(Request.Builder()
                     .url("${server.baseUrl}$path").post(rb).build()).execute()
+                resp.use {
+                    if (!it.isSuccessful) error("HTTP ${it.code}: ${it.body?.string().orEmpty().take(120)}")
+                }
+            }
+        }
+
+    private suspend fun put(path: String, body: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val rb = body.toRequestBody("application/json".toMediaType())
+                val resp = http.newCall(Request.Builder()
+                    .url("${server.baseUrl}$path").put(rb).build()).execute()
                 resp.use {
                     if (!it.isSuccessful) error("HTTP ${it.code}: ${it.body?.string().orEmpty().take(120)}")
                 }
@@ -96,6 +137,21 @@ data class StatusResp(
     val lastError:   String  = "",
     val currentMac:  String? = null,
     val telemetry:   TelemetryResp? = null,
+    val fuel:        FuelResp? = null,
+)
+
+// Mirrors the server-side FuelDto in windows/.../ApiEndpoints.cs.
+// All fields optional so older servers without fuel support still parse.
+@Serializable
+data class FuelResp(
+    val mac:                String? = null,
+    val currentLitres:      Double  = 0.0,
+    val tankLitres:         Double  = 0.0,
+    val consumptionLowLph:  Double  = 0.0,
+    val consumptionHighLph: Double  = 0.0,
+    val currentLph:         Double  = 0.0,
+    val hoursRemaining:     Double? = null,
+    val alert:              String  = "None",   // "None"|"Warning"|"Critical"|"Shutdown"
 )
 
 @Serializable

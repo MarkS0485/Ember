@@ -55,6 +55,26 @@ class BoundDeviceStore(private val ctx: Context) {
     }
 
     /**
+     * Update per-heater fuel config. Null arguments preserve existing
+     * values so callers can update any subset.
+     */
+    suspend fun updateFuelConfig(
+        mac: String,
+        tankLitres: Double? = null,
+        consumptionLowLph: Double? = null,
+        consumptionHighLph: Double? = null,
+    ) = mutate { list ->
+        list.map { d ->
+            if (d.mac != mac) d
+            else d.copy(
+                tankLitres         = tankLitres         ?: d.tankLitres,
+                consumptionLowLph  = consumptionLowLph  ?: d.consumptionLowLph,
+                consumptionHighLph = consumptionHighLph ?: d.consumptionHighLph,
+            )
+        }
+    }
+
+    /**
      * One-shot lookup of a bound entry by MAC. Used by callers that need
      * the persisted record (e.g. its [BoundDevice.protocol]) at the moment
      * of a connect — observing the [all] flow would require an extra

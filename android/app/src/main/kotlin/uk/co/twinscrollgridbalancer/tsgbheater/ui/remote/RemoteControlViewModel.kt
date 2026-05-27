@@ -86,4 +86,11 @@ class RemoteControlViewModel(app: Application, val serverId: String) : AndroidVi
         fire { it.setTarget(next) }
     }
     fun setRunMode(mode: String) = fire { it.setRunMode(mode) }
+
+    // --- Fuel (via API) ------------------------------------------
+
+    fun refillFuel(litres: Double) = fire { it.refillFuel(litres) }
+
+    fun updateFuelConfig(tank: Double?, lowLph: Double?, highLph: Double?) =
+        fire { it.setFuelConfig(tank, lowLph, highLph) }
 }

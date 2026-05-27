@@ -54,6 +54,7 @@ import uk.co.twinscrollgridbalancer.tsgbheater.ble.FrameCodec
 import uk.co.twinscrollgridbalancer.tsgbheater.ble.HeaterTelemetry
 import uk.co.twinscrollgridbalancer.tsgbheater.ble.RunningMode
 import uk.co.twinscrollgridbalancer.tsgbheater.ui.components.BrandTopBar
+import uk.co.twinscrollgridbalancer.tsgbheater.ui.components.FuelCard
 import uk.co.twinscrollgridbalancer.tsgbheater.ui.components.StatusKind
 import uk.co.twinscrollgridbalancer.tsgbheater.ui.components.StatusPill
 import uk.co.twinscrollgridbalancer.tsgbheater.ui.theme.CoolBlue
@@ -144,6 +145,20 @@ fun DeviceScreen(
             val activeFaults = FaultCodes.active(t?.faultBits ?: 0)
             if (activeFaults.isNotEmpty()) {
                 item { FaultBanner(active = activeFaults.size, firstCode = activeFaults.first().code) }
+            }
+
+            // Fuel card. Shows the tank level estimate, hours remaining
+            // at the live gear, alert banner if level is low/critical,
+            // and lets the user refill or tweak per-heater config.
+            ui.fuel?.let { fuel ->
+                item {
+                    FuelCard(
+                        snapshot = fuel,
+                        currentGear = t?.aimGear ?: 5,
+                        onRefill = vm::refillFuel,
+                        onSaveConfig = vm::updateFuelConfig,
+                    )
+                }
             }
 
             item { CompactStats(t) }

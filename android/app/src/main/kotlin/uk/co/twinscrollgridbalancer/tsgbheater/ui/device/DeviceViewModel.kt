@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import uk.co.twinscrollgridbalancer.tsgbheater.ble.ConnectionState
 import uk.co.twinscrollgridbalancer.tsgbheater.ble.FrameCodec
 import uk.co.twinscrollgridbalancer.tsgbheater.ble.HeaterTelemetry
+import uk.co.twinscrollgridbalancer.tsgbheater.data.fuel.FuelTracker
 import uk.co.twinscrollgridbalancer.tsgbheater.data.store.BoundDevice
 import uk.co.twinscrollgridbalancer.tsgbheater.di.ServiceLocator
 import uk.co.twinscrollgridbalancer.tsgbheater.service.HeaterService
@@ -23,6 +24,9 @@ data class DeviceUiState(
     // the Device screen shows the target stepper or the gear segmented.
     // Persisted via AppSettingsStore so it survives restart.
     val selectedMode:    FrameCodec.RunMode  = FrameCodec.RunMode.Auto,
+    // Fuel-tracking snapshot. Null when no device is currently bound or
+    // no telemetry has arrived yet — UI hides the card in that case.
+    val fuel:            FuelTracker.FuelSnapshot? = null,
 )
 
 class DeviceViewModel(app: Application) : AndroidViewModel(app) {
@@ -30,6 +34,7 @@ class DeviceViewModel(app: Application) : AndroidViewModel(app) {
     private val ble      = ServiceLocator.ble
     private val store    = ServiceLocator.boundDevices
     private val settings = ServiceLocator.settings
+    private val fuelCtl  = ServiceLocator.fuelCtl
 
     private val currentDevice: kotlinx.coroutines.flow.Flow<BoundDevice?> =
         combine(store.all, store.currentMac) { list, mac ->
@@ -41,8 +46,9 @@ class DeviceViewModel(app: Application) : AndroidViewModel(app) {
         ble.telemetry,
         currentDevice,
         settings.selectedRunMode,
-    ) { state, telemetry, current, modeWire ->
-        DeviceUiState(state, telemetry, current, wireToMode(modeWire))
+        fuelCtl.snapshot,
+    ) { state, telemetry, current, modeWire, fuel ->
+        DeviceUiState(state, telemetry, current, wireToMode(modeWire), fuel)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DeviceUiState())
 
     fun reconnect() {
@@ -76,6 +82,26 @@ class DeviceViewModel(app: Application) : AndroidViewModel(app) {
         val next = (current + delta).coerceIn(TARGET_MIN_C, TARGET_MAX_C)
         ble.setTargetTemp(next)
     }
+
+    // --- Fuel ---------------------------------------------------
+
+    fun refillFuel(litres: Double) = viewModelScope.launch {
+        val mac = ui.value.current?.mac ?: return@launch
+        fuelCtl.refill(mac, litres)
+    }
+
+    fun setFuelLevel(litres: Double) = viewModelScope.launch {
+        val mac = ui.value.current?.mac ?: return@launch
+        fuelCtl.setLevel(mac, litres)
+    }
+
+    fun updateFuelConfig(tank: Double?, lowLph: Double?, highLph: Double?) =
+        viewModelScope.launch {
+            val mac = ui.value.current?.mac ?: return@launch
+            store.updateFuelConfig(mac, tank, lowLph, highLph)
+            // Re-evaluate snapshot now that consumption math may have changed.
+            fuelCtl.refresh(mac)
+        }
 
     private fun wireToMode(w: Int): FrameCodec.RunMode = when (w) {
         1    -> FrameCodec.RunMode.Manual

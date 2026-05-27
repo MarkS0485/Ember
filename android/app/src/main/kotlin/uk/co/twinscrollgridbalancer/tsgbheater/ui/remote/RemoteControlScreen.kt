@@ -30,7 +30,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModel
+import uk.co.twinscrollgridbalancer.tsgbheater.data.fuel.FuelTracker
+import uk.co.twinscrollgridbalancer.tsgbheater.remote.FuelResp
 import uk.co.twinscrollgridbalancer.tsgbheater.ui.components.BrandTopBar
+import uk.co.twinscrollgridbalancer.tsgbheater.ui.components.FuelCard
 import uk.co.twinscrollgridbalancer.tsgbheater.ui.theme.ErrRed
 import uk.co.twinscrollgridbalancer.tsgbheater.ui.theme.OkGreen
 import uk.co.twinscrollgridbalancer.tsgbheater.ui.theme.ProbeSlate
@@ -159,6 +162,18 @@ fun RemoteControlScreen(serverId: String, onBack: () -> Unit) {
                 }
             }
 
+            // Fuel — same card as direct BLE, populated from API.
+            ui.status?.fuel?.let { fuel ->
+                item {
+                    FuelCard(
+                        snapshot     = fuel.toFuelSnapshot(),
+                        currentGear  = t?.aimGear ?: 5,
+                        onRefill     = vm::refillFuel,
+                        onSaveConfig = vm::updateFuelConfig,
+                    )
+                }
+            }
+
             // Stats
             item {
                 Card {
@@ -230,4 +245,25 @@ private class RemoteControlVmFactory(
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T =
         RemoteControlViewModel(app, serverId) as T
+}
+
+// Bridge the API-side FuelResp into the same FuelSnapshot shape the
+// shared FuelCard renders. The Windows server reports the alert level
+// as a string ("None"/"Warning"/"Critical"/"Shutdown") matching the
+// enum's ToString(); decode it back into AlertLevel.
+private fun FuelResp.toFuelSnapshot(): FuelTracker.FuelSnapshot {
+    val level = when (alert.lowercase()) {
+        "warning"  -> FuelTracker.AlertLevel.WARNING
+        "critical" -> FuelTracker.AlertLevel.CRITICAL
+        "shutdown" -> FuelTracker.AlertLevel.SHUTDOWN
+        else       -> FuelTracker.AlertLevel.NONE
+    }
+    return FuelTracker.FuelSnapshot(
+        mac                 = mac ?: "",
+        currentLitres       = currentLitres,
+        tankLitres          = tankLitres,
+        consumptionLowLph   = consumptionLowLph,
+        consumptionHighLph  = consumptionHighLph,
+        alert               = level,
+    )
 }

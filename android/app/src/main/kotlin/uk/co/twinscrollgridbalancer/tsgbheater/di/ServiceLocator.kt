@@ -3,6 +3,8 @@ package uk.co.twinscrollgridbalancer.tsgbheater.di
 import android.content.Context
 import uk.co.twinscrollgridbalancer.tsgbheater.ble.BleManager
 import uk.co.twinscrollgridbalancer.tsgbheater.data.auto.AutoStartStopController
+import uk.co.twinscrollgridbalancer.tsgbheater.data.fuel.FuelStore
+import uk.co.twinscrollgridbalancer.tsgbheater.data.fuel.FuelTracker
 import uk.co.twinscrollgridbalancer.tsgbheater.data.group.GroupController
 import uk.co.twinscrollgridbalancer.tsgbheater.data.group.GroupStore
 import uk.co.twinscrollgridbalancer.tsgbheater.data.schedule.ScheduleController
@@ -26,6 +28,8 @@ object ServiceLocator {
     lateinit var scheduleStore: ScheduleStore           private set
     lateinit var scheduleCtl:  ScheduleController       private set
     lateinit var pairedServers: PairedServerStore       private set
+    lateinit var fuelStore:    FuelStore                private set
+    lateinit var fuelCtl:      FuelTracker              private set
 
     fun init(ctx: Context) {
         if (initialised) return
@@ -43,8 +47,11 @@ object ServiceLocator {
         scheduleStore = ScheduleStore(app)
         scheduleCtl   = ScheduleController(ble, scheduleStore, settings)
         pairedServers = PairedServerStore(app)
+        fuelStore     = FuelStore(app)
+        fuelCtl       = FuelTracker(ble, boundDevices, fuelStore)
         auto.start()
         scheduleCtl.start()
+        fuelCtl.start()
         initialised = true
     }
 }

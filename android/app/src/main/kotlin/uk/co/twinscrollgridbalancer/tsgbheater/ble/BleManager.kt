@@ -46,6 +46,9 @@ class BleManager(private val ctx: Context) {
     @Volatile private var activeDriver: IHeaterProtocol? = null
     @Volatile private var activeMac: String? = null
 
+    /** Currently-connected MAC (or null if no active link). Read-only accessor. */
+    fun activeMac(): String? = activeMac
+
     // Subscription jobs for the active driver's flows. Cancelled on
     // disconnect / driver switch so we don't double-publish.
     private var subState: Job?     = null

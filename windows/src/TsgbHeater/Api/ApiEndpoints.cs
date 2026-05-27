@@ -32,6 +32,9 @@ public static class ApiEndpoints
             var s = ServiceLocator.Ble.State;
             var t = ServiceLocator.Ble.Telemetry;
             var mac = ServiceLocator.BoundDevices.CurrentMac;
+            // Fuel snapshot tucked into the same status payload so a
+            // single poll gets everything the remote UI needs to render.
+            var fuel = mac == null ? null : FuelDto(ServiceLocator.FuelCtl.Snapshot(mac));
             return Results.Json(new
             {
                 state = s.ToString(),
@@ -57,7 +60,45 @@ public static class ApiEndpoints
                     faultBits    = t.FaultBits,
                     updatedAtMs  = t.UpdatedAtMs,
                 },
+                fuel,
             });
+        });
+
+        // --- Fuel ---------------------------------------------------
+        //
+        // All fuel endpoints operate on the CURRENT bound device unless
+        // ?mac=XX is given. Refill/level/config are idempotent under
+        // repeated calls — useful from a thumb-fat remote.
+
+        app.MapGet("/api/v1/fuel", (string? mac) =>
+        {
+            var m = mac ?? ServiceLocator.BoundDevices.CurrentMac;
+            if (string.IsNullOrEmpty(m)) return Results.BadRequest(new { error = "no MAC and no current device" });
+            return Results.Json(FuelDto(ServiceLocator.FuelCtl.Snapshot(m)) ?? (object)new { error = "not bound" });
+        });
+
+        app.MapPost("/api/v1/fuel/refill", (FuelLitresBody body) =>
+        {
+            var m = body.Mac ?? ServiceLocator.BoundDevices.CurrentMac;
+            if (string.IsNullOrEmpty(m)) return Results.BadRequest(new { error = "no MAC and no current device" });
+            ServiceLocator.FuelCtl.Refill(m, body.Litres);
+            return Results.Json(FuelDto(ServiceLocator.FuelCtl.Snapshot(m)));
+        });
+
+        app.MapPost("/api/v1/fuel/level", (FuelLitresBody body) =>
+        {
+            var m = body.Mac ?? ServiceLocator.BoundDevices.CurrentMac;
+            if (string.IsNullOrEmpty(m)) return Results.BadRequest(new { error = "no MAC and no current device" });
+            ServiceLocator.FuelCtl.SetLevel(m, body.Litres);
+            return Results.Json(FuelDto(ServiceLocator.FuelCtl.Snapshot(m)));
+        });
+
+        app.MapPut("/api/v1/fuel/config", (FuelConfigBody body) =>
+        {
+            var m = body.Mac ?? ServiceLocator.BoundDevices.CurrentMac;
+            if (string.IsNullOrEmpty(m)) return Results.BadRequest(new { error = "no MAC and no current device" });
+            ServiceLocator.BoundDevices.UpdateFuelConfig(m, body.Tank, body.Low, body.High);
+            return Results.Json(FuelDto(ServiceLocator.FuelCtl.Snapshot(m)));
         });
 
         // --- Connection management ----------------------------------
@@ -318,4 +359,30 @@ public static class ApiEndpoints
     public sealed record GroupCreateBody(string Name, string[] Macs);
     public sealed record ProbeBody(int Index, int D1, int D2);
     public sealed record HexBody(string Hex);
+
+    // --- Fuel DTOs ----------------------------------------------
+
+    public sealed record FuelLitresBody(double Litres, string? Mac = null);
+    public sealed record FuelConfigBody(double? Tank, double? Low, double? High, string? Mac = null);
+
+    // Flatten a FuelSnapshot into a JSON-friendly shape, computing
+    // the current consumption rate at the live gear so remote clients
+    // don't have to know about the gear→L/h interpolation themselves.
+    private static object? FuelDto(FuelTracker.FuelSnapshot? snap)
+    {
+        if (snap == null) return null;
+        int gear = ServiceLocator.Ble.Telemetry?.AimGear ?? 5;
+        double lph = FuelTracker.ConsumptionForGear(gear, snap.ConsumptionLowLph, snap.ConsumptionHighLph);
+        return new
+        {
+            mac                 = snap.Mac,
+            currentLitres       = snap.CurrentLitres,
+            tankLitres          = snap.TankLitres,
+            consumptionLowLph   = snap.ConsumptionLowLph,
+            consumptionHighLph  = snap.ConsumptionHighLph,
+            currentLph          = lph,
+            hoursRemaining      = lph > 0 ? snap.CurrentLitres / lph : (double?)null,
+            alert               = snap.Alert.ToString(),  // "None"|"Warning"|"Critical"|"Shutdown"
+        };
+    }
 }
