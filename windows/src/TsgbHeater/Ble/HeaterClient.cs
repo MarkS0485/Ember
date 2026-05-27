@@ -4,6 +4,9 @@ using Windows.Devices.Bluetooth.Advertisement;
 using Windows.Devices.Bluetooth.GenericAttributeProfile;
 using Windows.Devices.Enumeration;
 using Windows.Storage.Streams;
+using TsgbHeater.Data;
+using TsgbHeater.Protocol;
+using TsgbHeater.Protocol.Hcalory;
 using TsgbHeater.Services;
 
 namespace TsgbHeater.Ble;
@@ -68,6 +71,23 @@ public sealed class HeaterClient : IAsyncDisposable
     private const int CooldownMs           = 30_000;
     private const int KeepaliveIntervalMs  = 20_000;
 
+    // --- Protocol dispatch -------------------------------------------
+    //
+    // When a non-HeatGenie device is connected, we delegate ALL the BLE
+    // work to an external IHeaterProtocol driver and forward its events
+    // up through HeaterClient's existing event surface so ViewModels
+    // don't need to know which protocol is active.
+    private HcaloryProtocol?  _hcalory;
+    private IHeaterProtocol?  _activeAlt;       // non-null iff active protocol != HeatGenie
+    private BoundDeviceStore? _boundDevices;    // injected by ServiceLocator after construction
+
+    /// <summary>
+    /// Wire the BoundDeviceStore in. Must be called once before the first
+    /// ConnectAsync — the dispatcher uses it to learn which protocol to
+    /// speak for a given MAC.
+    /// </summary>
+    public void AttachBoundDevices(BoundDeviceStore store) => _boundDevices = store;
+
     // --- Scan ---------------------------------------------------------
 
     public void StartScan()
@@ -112,7 +132,9 @@ public sealed class HeaterClient : IAsyncDisposable
         string? name = string.IsNullOrEmpty(e.Advertisement.LocalName) ? null : e.Advertisement.LocalName;
         int rssi    = e.RawSignalStrengthInDBm;
         long now    = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        bool isHeater = name?.Contains("KZQ", StringComparison.OrdinalIgnoreCase) == true
+        var proto   = DetectProtocol(e.Advertisement.ServiceUuids);
+        bool isHeater = proto != null
+                        || name?.Contains("KZQ", StringComparison.OrdinalIgnoreCase) == true
                         || name?.Contains("HEATGENIE", StringComparison.OrdinalIgnoreCase) == true
                         || name?.Contains("HEATER", StringComparison.OrdinalIgnoreCase) == true;
 
@@ -126,14 +148,35 @@ public sealed class HeaterClient : IAsyncDisposable
                     Name          = name ?? existing.Name,
                     IsKnownHeater = existing.IsKnownHeater || isHeater,
                     LastSeenAtMs  = now,
+                    // Sticky: don't let a later advert that omits the
+                    // service UUID clear what we already detected.
+                    Protocol      = proto ?? existing.Protocol,
                 };
             }
             else
             {
-                _devices[mac] = new DiscoveredDevice(mac, name, rssi, isHeater, now);
+                _devices[mac] = new DiscoveredDevice(mac, name, rssi, isHeater, now, proto);
             }
         }
         DevicesChanged?.Invoke();
+    }
+
+    // Walk an advert's service-UUID list and return the first known
+    // match. We can't rely on every heater advertising its service
+    // (HeatGenie often doesn't until after GATT discovery), so a null
+    // here is not a "definitely not a heater" signal.
+    private static ProtocolKind? DetectProtocol(IList<Guid> uuids)
+    {
+        foreach (var u in uuids)
+        {
+            if (u == HcaloryProtocol.ServiceLegacy || u == HcaloryProtocol.ServiceCustom)
+                return ProtocolKind.Hcalory;
+            // HeatGenie's primary service is 181a (Environmental Sensing).
+            // Some firmware advertises it pre-GATT-discovery, some doesn't.
+            if (u == new Guid("0000181a-0000-1000-8000-00805F9B34FB"))
+                return ProtocolKind.HeatGenie;
+        }
+        return null;
     }
 
     // --- Connect ------------------------------------------------------
@@ -145,9 +188,102 @@ public sealed class HeaterClient : IAsyncDisposable
         // WinRT bindings throw assorted COMExceptions when Bluetooth is
         // toggling or the radio is wedged, and we'd rather show a red
         // line than crash the window.
-        try { await ConnectInnerAsync(mac).ConfigureAwait(false); }
+        try
+        {
+            // Look up the bound device's protocol. Unknown MAC defaults to
+            // HeatGenie (the historical default — every pre-multi-protocol
+            // pairing was a HG heater).
+            var kind = _boundDevices?.All.FirstOrDefault(b =>
+                b.Mac.Equals(mac, StringComparison.OrdinalIgnoreCase))?.Protocol
+                ?? ProtocolKind.HeatGenie;
+
+            if (kind == ProtocolKind.Hcalory)
+            {
+                await ConnectViaAltAsync(EnsureHcalory(), mac).ConfigureAwait(false);
+            }
+            else
+            {
+                // Tear down any non-HG session we might be holding before
+                // running the HG-native connect path.
+                await TearDownAltAsync().ConfigureAwait(false);
+                await ConnectInnerAsync(mac).ConfigureAwait(false);
+            }
+        }
         catch (Exception ex) { Fail($"Connect threw: {ex.GetType().Name}: {ex.Message}"); }
     }
+
+    // --- Alternate-protocol dispatch (HCalory and any future driver) ---
+
+    private HcaloryProtocol EnsureHcalory()
+    {
+        if (_hcalory != null) return _hcalory;
+        var h = new HcaloryProtocol();
+        // Forward HCalory's protocol-neutral events into HeaterClient's
+        // existing event surface. ViewModels don't need to know that the
+        // events originated elsewhere.
+        h.ConnectionChanged   += b => State = b ? ConnectionState.Ready : ConnectionState.Idle;
+        h.TelemetryChanged    += t => Telemetry = ToHeaterTelemetry(t);
+        h.RawFrameReceived    += b => FrameSeen?.Invoke(new RawFrame(false, b, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()));
+        _hcalory = h;
+        return h;
+    }
+
+    private async Task ConnectViaAltAsync(IHeaterProtocol drv, string mac)
+    {
+        // Tear down the HG session if one is open — both protocols share
+        // the same exported state machine, so we can only have one active
+        // at a time.
+        await TearDownAsync().ConfigureAwait(false);
+        _activeAlt = drv;
+        State = ConnectionState.Connecting;
+        var r = await drv.ConnectAsync(mac).ConfigureAwait(false);
+        if (!r.Ok) Fail($"Connect ({drv.Kind}): {r.Error}");
+    }
+
+    private async Task TearDownAltAsync()
+    {
+        if (_activeAlt != null)
+        {
+            try { await _activeAlt.DisconnectAsync().ConfigureAwait(false); }
+            catch (Exception ex) { Log.W("ble", $"alt disconnect threw: {ex.Message}"); }
+            _activeAlt = null;
+        }
+    }
+
+    // Synthesize a HeatGenie-shaped HeaterTelemetry from CommonTelemetry
+    // so existing ViewModels (DevicePage, AdvancePage, …) work unchanged
+    // when an HCalory device is connected. Fields the source doesn't
+    // publish stay null; the UI already renders "—" for those.
+    private static HeaterTelemetry ToHeaterTelemetry(CommonTelemetry t) => new(
+        OutletTempC:        t.OutletC,
+        TargetTempC:        t.TargetC,
+        FuelPumpHz:         t.PumpHz,
+        FanRpm:             t.FanRpm,
+        GlowPlugA:          null,
+        BatteryV:           t.BatteryV,
+        AmbientTempC:       t.AmbientC,
+        HousingTempC:       t.HousingC,
+        IntakeTempC:        t.IntakeC,
+        AltitudeM:          t.AltitudeM,
+        IgnitionWatts:      t.IgnitionW,
+        RunningMode:        ToHeatGenieMode(t.Mode),
+        FaultBits:          t.FaultBits ?? 0,
+        TempUnitFahrenheit: t.TempUnitF ?? false,
+        AimGear:            t.AimGear,
+        UpdatedAtMs:        t.UpdatedAtMs > 0 ? t.UpdatedAtMs : DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+
+    private static RunningMode ToHeatGenieMode(CommonRunningMode m) => m switch
+    {
+        CommonRunningMode.Standby    => RunningMode.Standby,
+        CommonRunningMode.Starting   => RunningMode.Ignition,
+        CommonRunningMode.Running    => RunningMode.AutoRun,
+        CommonRunningMode.Vent       => RunningMode.Ventilation,
+        CommonRunningMode.BlowerOnly => RunningMode.Ventilation,
+        CommonRunningMode.Shutdown   => RunningMode.Cooldown,
+        CommonRunningMode.Fault      => RunningMode.Fault,
+        CommonRunningMode.ManualPump => RunningMode.ManualPump,
+        _                            => RunningMode.Unknown,
+    };
 
     private async Task ConnectInnerAsync(string mac)
     {
@@ -363,7 +499,11 @@ public sealed class HeaterClient : IAsyncDisposable
         _ => $"GetGattServicesAsync failed with {s}",
     };
 
-    public async Task DisconnectAsync() => await TearDownAsync().ConfigureAwait(false);
+    public async Task DisconnectAsync()
+    {
+        await TearDownAltAsync().ConfigureAwait(false);
+        await TearDownAsync().ConfigureAwait(false);
+    }
 
     private async Task TearDownAsync()
     {
@@ -452,25 +592,65 @@ public sealed class HeaterClient : IAsyncDisposable
         }
     }
 
-    public Task<bool> SendStart()     => WriteAsync(FrameCodec.BuildStartHeater());
-    public Task<bool> SendStop()      => WriteAsync(FrameCodec.BuildStopHeater());
-    public Task<bool> BlowOn()        => WriteAsync(FrameCodec.BuildBlowOn());
-    public Task<bool> OilPumpOn(int s = FrameCodec.ManualPumpDefaultSeconds)
-                                      => WriteAsync(FrameCodec.BuildManualPumpRun(s));
-    public Task<bool> OilPumpOff()    => WriteAsync(FrameCodec.BuildStopHeater());
+    // Protocol-neutral commands: dispatch to the active alt driver when one
+    // is in use, otherwise fall through to the HG FrameCodec path.
+    public Task<bool> SendStart() => _activeAlt != null
+        ? UnwrapAsync(_activeAlt.StartAsync())
+        : WriteAsync(FrameCodec.BuildStartHeater());
 
-    public Task<bool> SetTargetTemp(int c)
-        => WriteAsync(FrameCodec.BuildSetTargetTemp(c, FrameCodec.TempUnit.Celsius));
-    public Task<bool> SetGear(int g)     => WriteAsync(FrameCodec.BuildSetGear(g));
-    public Task<bool> SetRunMode(FrameCodec.RunMode m) => WriteAsync(FrameCodec.BuildSetRunMode(m));
-    public Task<bool> SetTempHysteresis(int diff)
-        => WriteAsync(FrameCodec.BuildSetTempHysteresis(diff, FrameCodec.TempUnit.Celsius));
+    public Task<bool> SendStop() => _activeAlt != null
+        ? UnwrapAsync(_activeAlt.StopAsync())
+        : WriteAsync(FrameCodec.BuildStopHeater());
 
-    public Task<bool> ReadRegInfo()    => WriteAsync(FrameCodec.BuildReadRegInfo());
-    public Task<bool> ReadTimerInfo()  => WriteAsync(FrameCodec.BuildReadTimerInfo());
+    public Task<bool> BlowOn() => _activeAlt != null
+        ? UnwrapAsync(_activeAlt.VentAsync())
+        : WriteAsync(FrameCodec.BuildBlowOn());
 
-    public Task<bool> WriteTimer(IReadOnlyList<WriteTimerSlot> slots)
-        => WriteAsync(FrameCodec.BuildWriteTimerArea(slots));
+    public Task<bool> OilPumpOn(int s = FrameCodec.ManualPumpDefaultSeconds) => _activeAlt != null
+        ? UnwrapAsync(_activeAlt.PulsePumpAsync(s))
+        : WriteAsync(FrameCodec.BuildManualPumpRun(s));
+
+    public Task<bool> OilPumpOff() => _activeAlt != null
+        ? UnwrapAsync(_activeAlt.StopAsync())
+        : WriteAsync(FrameCodec.BuildStopHeater());
+
+    public Task<bool> SetTargetTemp(int c) => _activeAlt != null
+        ? UnwrapAsync(_activeAlt.SetTargetCAsync(c))
+        : WriteAsync(FrameCodec.BuildSetTargetTemp(c, FrameCodec.TempUnit.Celsius));
+
+    public Task<bool> SetGear(int g) => _activeAlt != null
+        ? UnwrapAsync(_activeAlt.SetGearAsync(g))
+        : WriteAsync(FrameCodec.BuildSetGear(g));
+
+    // HeatGenie-specific commands: no-op when an alt driver is active.
+    // The UI is expected to gate these on Capabilities.HasRunModes /
+    // HasNativeSwitches / HasNativeSchedule, but defending here too
+    // means a stray callsite doesn't blow up.
+    public Task<bool> SetRunMode(FrameCodec.RunMode m) => _activeAlt != null
+        ? Task.FromResult(false)
+        : WriteAsync(FrameCodec.BuildSetRunMode(m));
+
+    public Task<bool> SetTempHysteresis(int diff) => _activeAlt != null
+        ? Task.FromResult(false)
+        : WriteAsync(FrameCodec.BuildSetTempHysteresis(diff, FrameCodec.TempUnit.Celsius));
+
+    public Task<bool> ReadRegInfo()   => _activeAlt != null
+        ? Task.FromResult(false)
+        : WriteAsync(FrameCodec.BuildReadRegInfo());
+
+    public Task<bool> ReadTimerInfo() => _activeAlt != null
+        ? Task.FromResult(false)
+        : WriteAsync(FrameCodec.BuildReadTimerInfo());
+
+    public Task<bool> WriteTimer(IReadOnlyList<WriteTimerSlot> slots) => _activeAlt != null
+        ? Task.FromResult(false)
+        : WriteAsync(FrameCodec.BuildWriteTimerArea(slots));
+
+    private static async Task<bool> UnwrapAsync(Task<ProtocolResult> t)
+    {
+        var r = await t.ConfigureAwait(false);
+        return r.Ok;
+    }
 
     // --- Notifications ------------------------------------------------
 

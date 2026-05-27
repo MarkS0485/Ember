@@ -86,9 +86,15 @@ public sealed partial class ScanViewModel : ObservableObject
         // second click would be a no-op. The user does an explicit
         // Connect on the paired list.
         var name = !string.IsNullOrWhiteSpace(d.Name) ? d.Name! : $"Heater {d.Mac[^5..]}";
+        // If the scanner detected the protocol via service UUID, use that.
+        // Otherwise default to HeatGenie — the historical default since
+        // every pre-multi-protocol pairing was a HG heater. User can edit
+        // later if mistaken.
+        var protocol = d.Protocol ?? TsgbHeater.Protocol.ProtocolKind.HeatGenie;
         _store.Add(new BoundDevice(
             Mac: d.Mac, Name: name,
-            LastSeenAtMs: DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()));
+            LastSeenAtMs: DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            Protocol: protocol));
         _store.SetCurrent(d.Mac);
         // Stop the scan: keeping the watcher running while we connect
         // adds noise to the BLE radio and isn't useful once a device is

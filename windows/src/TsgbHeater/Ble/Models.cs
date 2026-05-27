@@ -75,12 +75,18 @@ public sealed record HeaterTelemetry(
 
 // One advert hit during a scan. RSSI updates in-place as we re-see the
 // same MAC so the UI can render a live signal bar.
+//
+// Protocol is filled in by the scanner when it sees a known service UUID
+// in the advert. null means "unknown" — could be a HeatGenie that hasn't
+// advertised its service yet, could be an unrelated device. The bind
+// flow lets the user override.
 public sealed record DiscoveredDevice(
-    string Mac,
-    string? Name,
-    int     Rssi,
-    bool    IsKnownHeater,
-    long    LastSeenAtMs);
+    string                            Mac,
+    string?                           Name,
+    int                               Rssi,
+    bool                              IsKnownHeater,
+    long                              LastSeenAtMs,
+    TsgbHeater.Protocol.ProtocolKind? Protocol = null);
 
 // One slot from a timerInfoArea read.
 public sealed record TimerSlot(

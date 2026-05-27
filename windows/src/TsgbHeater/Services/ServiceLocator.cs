@@ -27,6 +27,10 @@ public static class ServiceLocator
         BoundDevices   = new BoundDeviceStore();
         Settings       = new AppSettings();
         Ble            = new HeaterClient();
+        // HeaterClient needs the bound-device store to learn which protocol
+        // to speak for a given MAC at connect time. Construction order
+        // forbids passing it via constructor, so inject after.
+        Ble.AttachBoundDevices(BoundDevices);
         ScheduleStore  = new ScheduleStore();
         Scheduler      = new ScheduleController(Ble, ScheduleStore, Settings);
         AutoController = new AutoStartStopController(Ble, Settings);
