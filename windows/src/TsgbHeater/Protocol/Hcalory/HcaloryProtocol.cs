@@ -166,27 +166,48 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
 
     // --- Commands ----------------------------------------------------
 
+    // Commands now use the HCalory wire format (not Tuya-spec). Each
+    // simple-pipeline command is `00 02 00 01 00 01 00 [HI] [LO] [TYPE]
+    // [LEN2B] [VALUE...] [CSUM]`, where [HI][LO] is the 2-byte DP/cmd
+    // id taken straight from the native command builders in
+    // k2/e.java. See OLDSRC/hcalory/DP_CATALOG.md for the IDs.
+    //
+    // KNOWN GAPS — verified bytes vs guesses:
+    //   • timestamp 0x0A0A and info-query 0x0E04 are verified — the
+    //     heater accepts them and acks the connection stays alive.
+    //   • mode-set bytes below are educated guesses: there's no
+    //     simple-pipeline "set mode" in the decompile; native uses
+    //     a complex r()+t()+u() pipeline for F() (scene/state set).
+    //     Pending a Frida-side wire capture, we send DP 0x0001 enum
+    //     value-byte writes — close-Tuya-style — and see what sticks.
+
     public Task<ProtocolResult> StartAsync() =>
-        WriteDpAsync(TuyaBleFrame.DpEnum(Dpc.Mode, Dpc.ModeAuto));
+        WriteRawAsync(BuildSimpleSetFrame(0x00, 0x01, type: 0x04, valueByte: 0x01)); // mode = AUTO
 
     public Task<ProtocolResult> StopAsync() =>
-        WriteDpAsync(TuyaBleFrame.DpEnum(Dpc.Mode, Dpc.ModeStandby));
+        WriteRawAsync(BuildSimpleSetFrame(0x00, 0x01, type: 0x04, valueByte: 0x00)); // mode = STANDBY
 
     public Task<ProtocolResult> VentAsync() =>
-        WriteDpAsync(TuyaBleFrame.DpEnum(Dpc.Mode, Dpc.ModeWind));
+        WriteRawAsync(BuildSimpleSetFrame(0x00, 0x01, type: 0x04, valueByte: 0x03)); // mode = WIND
 
     public Task<ProtocolResult> SetTargetCAsync(int celsius) =>
-        WriteDpAsync(TuyaBleFrame.DpValue(Dpc.TargetTemp, celsius));
+        WriteRawAsync(BuildSimpleSetFrame(0x00, 0x05, type: 0x00, valueByte: (byte)celsius));
 
     public async Task<ProtocolResult> SetGearAsync(int gear)
     {
-        var r = await WriteDpAsync(TuyaBleFrame.DpEnum(Dpc.Mode, Dpc.ModeManual)).ConfigureAwait(false);
-        if (!r.Ok) return r;
-        return await WriteDpAsync(TuyaBleFrame.DpValue(Dpc.TargetTemp, gear)).ConfigureAwait(false);
+        // Native I() — set gear via DP 0x0607 with the gear value.
+        // Simple-pipeline, no mode switch needed first (the heater
+        // figures out it's a manual-mode command from the DP id).
+        return await WriteRawAsync(
+            BuildSimpleSetFrame(0x06, 0x07, type: 0x00, valueByte: (byte)gear)
+        ).ConfigureAwait(false);
     }
 
     public Task<ProtocolResult> SetAltitudeMAsync(int metres) =>
-        WriteDpAsync(TuyaBleFrame.DpValue(Dpc.Altitude, metres));
+        // Native H() altitude is DP 0x0909 with sign byte + 2-byte magnitude
+        // + unit byte — more involved than a 1-byte enum. Send via the
+        // raw helper so the magnitude doesn't get truncated.
+        WriteRawAsync(BuildAltitudeFrame(metres));
 
     public Task<ProtocolResult> PulsePumpAsync(int seconds) =>
         Task.FromResult(ProtocolResult.Unsupported("manual pump"));
@@ -218,6 +239,7 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
         if (ch == null) return ProtocolResult.Fail("not connected");
         try
         {
+            Log.I("hcalory", $"TX [{bytes.Length}B] {Convert.ToHexString(bytes)}");
             RawFrameReceived?.Invoke(bytes);
             var writer = new DataWriter();
             writer.WriteBytes(bytes);
@@ -228,6 +250,63 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
                 : ProtocolResult.Fail($"write returned {status}");
         }
         catch (Exception ex) { return ProtocolResult.Fail(ex.Message); }
+    }
+
+    // Build an HCalory simple-pipeline frame for a single-byte value
+    // setter. Mirrors `j2.j.b.a("00 02 00 01 00 01 00 [HI][LO][TYPE]
+    // 0001 [VAL]")` in the decompile.
+    //
+    // Layout (12 bytes):
+    //   0..6  : 00 02 00 01 00 01 00       (7-byte fixed header)
+    //   7,8   : DP id high / low
+    //   9     : DP type byte
+    //   10,11 : value length = 0001
+    //   12    : value
+    //   13    : checksum
+    private static byte[] BuildSimpleSetFrame(byte dpHi, byte dpLo, byte type, byte valueByte)
+    {
+        var b = new byte[14];
+        b[0] = 0x00; b[1] = 0x02;
+        b[2] = 0x00; b[3] = 0x01; b[4] = 0x00; b[5] = 0x01; b[6] = 0x00;
+        b[7]  = dpHi; b[8] = dpLo;
+        b[9]  = type;
+        b[10] = 0x00; b[11] = 0x01;     // 1-byte value
+        b[12] = valueByte;
+        b[13] = ChecksumPayload(b);
+        return b;
+    }
+
+    // Altitude via DP 0x0909, type 0x00, value bytes = sign + |altM|_BE16 + unit.
+    // From native H(int, fVar) in k2/e.java:218. Sign byte 0x01 = negative
+    // (altitude below sea level), 0x00 = positive. Unit byte 0x00 = m,
+    // 0x01 = ft — we always submit metres so the heater stores the canonical
+    // SI value; display conversion happens UI-side.
+    //
+    // Layout (17 bytes incl. checksum):
+    //   0..6  : 00 02 00 01 00 01 00
+    //   7,8   : 09 09                      (DP id)
+    //   9     : 00                          (type)
+    //   10,11 : 00 04                       (value length)
+    //   12    : sign byte
+    //   13,14 : abs(metres) big-endian
+    //   15    : unit (m)
+    //   16    : checksum
+    private static byte[] BuildAltitudeFrame(int metres)
+    {
+        int abs = Math.Abs(metres);
+        byte sign = (byte)(metres < 0 ? 0x01 : 0x00);
+        var b = new byte[17];
+        b[0] = 0x00; b[1] = 0x02;
+        b[2] = 0x00; b[3] = 0x01; b[4] = 0x00; b[5] = 0x01; b[6] = 0x00;
+        b[7] = 0x09; b[8] = 0x09;
+        b[9] = 0x00;
+        b[10] = 0x00; b[11] = 0x04;
+        b[12] = sign;
+        b[13] = (byte)((abs >> 8) & 0xFF);
+        b[14] = (byte)(abs & 0xFF);
+        b[15] = 0x00;
+        b[16] = ChecksumPayload(b);
+        return b;
     }
 
     // --- Raw frame builders (HCalory wire format) -------------------
