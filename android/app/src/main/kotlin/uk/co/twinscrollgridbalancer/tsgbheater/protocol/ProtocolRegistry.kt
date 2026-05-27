@@ -1,5 +1,6 @@
 package uk.co.twinscrollgridbalancer.tsgbheater.protocol
 
+import android.content.Context
 import uk.co.twinscrollgridbalancer.tsgbheater.protocol.hcalory.HcaloryProtocol
 import uk.co.twinscrollgridbalancer.tsgbheater.protocol.heatgenie.HeatGenieProtocol
 
@@ -29,10 +30,11 @@ object ProtocolRegistry {
 
     /**
      * Build a driver instance. Cheap — drivers don't open any radio
-     * resources until [IHeaterProtocol.connect] is called.
+     * resources until [IHeaterProtocol.connect] is called. Context is
+     * needed to construct the underlying BluetoothManager / Gatt.
      */
-    fun create(kind: ProtocolKind): IHeaterProtocol = when (kind) {
-        ProtocolKind.HEATGENIE -> HeatGenieProtocol()
-        ProtocolKind.HCALORY   -> HcaloryProtocol()
+    fun create(kind: ProtocolKind, ctx: Context): IHeaterProtocol = when (kind) {
+        ProtocolKind.HEATGENIE -> HeatGenieProtocol(ctx)
+        ProtocolKind.HCALORY   -> HcaloryProtocol(ctx)
     }
 }

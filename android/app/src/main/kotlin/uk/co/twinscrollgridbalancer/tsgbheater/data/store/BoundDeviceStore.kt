@@ -54,6 +54,14 @@ class BoundDeviceStore(private val ctx: Context) {
         list.map { if (it.mac == mac) it.copy(lastSeenAtMs = now) else it }
     }
 
+    /**
+     * One-shot lookup of a bound entry by MAC. Used by callers that need
+     * the persisted record (e.g. its [BoundDevice.protocol]) at the moment
+     * of a connect — observing the [all] flow would require an extra
+     * suspend boundary they don't have.
+     */
+    suspend fun findByMac(mac: String): BoundDevice? = all.first().firstOrNull { it.mac == mac }
+
     suspend fun setCurrent(mac: String?) {
         ctx.boundDeviceDataStore.edit { prefs ->
             if (mac == null) prefs.remove(KEY_CURRENT_MAC) else prefs[KEY_CURRENT_MAC] = mac

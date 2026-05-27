@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import uk.co.twinscrollgridbalancer.tsgbheater.ble.DiscoveredDevice
 import uk.co.twinscrollgridbalancer.tsgbheater.data.store.BoundDevice
 import uk.co.twinscrollgridbalancer.tsgbheater.di.ServiceLocator
+import uk.co.twinscrollgridbalancer.tsgbheater.protocol.ProtocolKind
 import uk.co.twinscrollgridbalancer.tsgbheater.service.HeaterService
 
 class BleListViewModel(app: Application) : AndroidViewModel(app) {
@@ -31,11 +32,17 @@ class BleListViewModel(app: Application) : AndroidViewModel(app) {
     fun bind(device: DiscoveredDevice) {
         viewModelScope.launch {
             val name = device.name?.takeIf { it.isNotBlank() } ?: "Heater ${device.mac.takeLast(5)}"
+            // If the scanner detected the protocol via service UUID, use
+            // that. Otherwise default to HEATGENIE — the historical default
+            // since every pre-multi-protocol pairing was a HeatGenie. User
+            // can edit in the bind detail screen if mistaken.
+            val protocol = device.protocol ?: ProtocolKind.HEATGENIE
             store.add(
                 BoundDevice(
                     mac = device.mac,
                     name = name,
                     lastSeenAtMs = System.currentTimeMillis(),
+                    protocol = protocol,
                 )
             )
             store.setCurrent(device.mac)

@@ -1,13 +1,21 @@
 package uk.co.twinscrollgridbalancer.tsgbheater.ble
 
+import uk.co.twinscrollgridbalancer.tsgbheater.protocol.ProtocolKind
+
 // One advert seen during a scan. RSSI is updated in place as we re-see the
 // same device, so the UI can render a live signal-strength bar.
+//
+// [protocol] is filled in by the scanner when it sees a service-UUID hint
+// in the advert. null means "unknown" — could be a fresh-boot HeatGenie
+// that hasn't advertised its service yet, could be an unrelated device.
+// The bind UI lets the user override.
 data class DiscoveredDevice(
     val mac: String,
     val name: String?,
     val rssi: Int,
     val isKnownHeater: Boolean,
     val lastSeenAtMs: Long,
+    val protocol: ProtocolKind? = null,
 )
 
 // One-shot enum that the GATT state machine emits. Names match the vendor

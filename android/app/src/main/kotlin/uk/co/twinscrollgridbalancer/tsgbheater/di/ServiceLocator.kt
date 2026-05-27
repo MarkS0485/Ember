@@ -32,6 +32,10 @@ object ServiceLocator {
         val app = ctx.applicationContext
         ble           = BleManager(app)
         boundDevices  = BoundDeviceStore(app)
+        // BleManager needs the bound-device store to look up which
+        // protocol to use for a given MAC at connect time. Construction
+        // order forbids passing it via constructor, so inject after.
+        ble.attachBoundDevices(boundDevices)
         settings      = AppSettingsStore(app)
         groups        = GroupStore(app)
         auto          = AutoStartStopController(ble, settings, boundDevices)

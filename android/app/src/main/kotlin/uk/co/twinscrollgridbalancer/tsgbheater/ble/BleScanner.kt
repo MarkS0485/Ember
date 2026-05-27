@@ -7,10 +7,13 @@ import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
 import android.content.Context
+import android.os.ParcelUuid
 import android.util.Log
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import uk.co.twinscrollgridbalancer.tsgbheater.protocol.ProtocolKind
+import uk.co.twinscrollgridbalancer.tsgbheater.protocol.hcalory.HcaloryProtocol
 
 // Flow-based wrapper over Android's BluetoothLeScanner. Emits a fresh
 // snapshot of discovered devices every time a new advert is seen — the
@@ -38,13 +41,17 @@ class BleScanner(private val ctx: Context) {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 val d = result.device
                 val name = result.scanRecord?.deviceName ?: runCatching { d.name }.getOrNull()
+                val advertised = result.scanRecord?.serviceUuids ?: emptyList()
+                val protocol = detectProtocol(advertised, name)
+                val isHeater = protocol != null || BleConstants.isHeaterName(name)
                 trySend(
                     DiscoveredDevice(
                         mac           = d.address,
                         name          = name,
                         rssi          = result.rssi,
-                        isKnownHeater = BleConstants.isHeaterName(name),
+                        isKnownHeater = isHeater,
                         lastSeenAtMs  = System.currentTimeMillis(),
+                        protocol      = protocol,
                     )
                 )
             }
@@ -69,6 +76,25 @@ class BleScanner(private val ctx: Context) {
             Log.i(TAG, "Stopping BLE scan")
             runCatching { scanner.stopScan(callback) }
         }
+    }
+
+    // Walk the advertised service-UUID list and return the first match. We
+    // can't rely on every heater advertising its service (HeatGenie ones
+    // often don't until after GATT discovery), so a null return here is
+    // not a "definitely not a heater" signal — the name-match below still
+    // applies. Falls through to null when nothing's recognised; the bind
+    // UI lets the user override.
+    private fun detectProtocol(
+        advertised: List<ParcelUuid>,
+        @Suppress("UNUSED_PARAMETER") name: String?,
+    ): ProtocolKind? {
+        for (pu in advertised) {
+            val u = pu.uuid
+            if (u == BleConstants.HEATER_SERVICE) return ProtocolKind.HEATGENIE
+            if (u == HcaloryProtocol.SERVICE_LEGACY || u == HcaloryProtocol.SERVICE_CUSTOM)
+                return ProtocolKind.HCALORY
+        }
+        return null
     }
 
     private companion object { const val TAG = "BleScanner" }
