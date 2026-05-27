@@ -166,32 +166,39 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
 
     // --- Commands ----------------------------------------------------
 
-    // Commands now use the HCalory wire format (not Tuya-spec). Each
-    // simple-pipeline command is `00 02 00 01 00 01 00 [HI] [LO] [TYPE]
-    // [LEN2B] [VALUE...] [CSUM]`, where [HI][LO] is the 2-byte DP/cmd
-    // id taken straight from the native command builders in
-    // k2/e.java. See OLDSRC/hcalory/DP_CATALOG.md for the IDs.
+    // Commands use HCalory's simple-pipeline wire format:
+    //   `00 02 00 01 00 01 00 [DP-HI][DP-LO] [TYPE] [VLEN-BE16] [VALUE...] [CSUM]`
     //
-    // KNOWN GAPS — verified bytes vs guesses:
-    //   • timestamp 0x0A0A and info-query 0x0E04 are verified — the
-    //     heater accepts them and acks the connection stays alive.
-    //   • mode-set bytes below are educated guesses: there's no
-    //     simple-pipeline "set mode" in the decompile; native uses
-    //     a complex r()+t()+u() pipeline for F() (scene/state set).
-    //     Pending a Frida-side wire capture, we send DP 0x0001 enum
-    //     value-byte writes — close-Tuya-style — and see what sticks.
+    // The earlier "DP 0x0001 enum" attempt was wrong on two counts —
+    // 0x0001 isn't a DP that exists on this heater (it disconnected us
+    // when we tried), and every simple-pipeline native command uses
+    // type 0x00, not 0x04.
+    //
+    // DP 0x0608 is the most plausible "power/mode" target: native k()
+    // at k2/e.java:394 literally builds
+    //   `00 02 00 01 00 01 00 0608 00 00 01 00`
+    // — same shape as a stop command, value 0x00. Values 0x01/0x02/0x03
+    // for start/vent are educated guesses one step from there.
+    //
+    // If start still disconnects, the next thing to try is the full
+    // F() complex-pipeline (DP 0x0B mode/scene frame) — but that needs
+    // a verified scene-id byte which we'll only get from a Frida capture.
 
     public Task<ProtocolResult> StartAsync() =>
-        WriteRawAsync(BuildSimpleSetFrame(0x00, 0x01, type: 0x04, valueByte: 0x01)); // mode = AUTO
+        WriteRawAsync(BuildSimpleSetFrame(0x06, 0x08, type: 0x00, valueByte: 0x01)); // best-guess "on"
 
     public Task<ProtocolResult> StopAsync() =>
-        WriteRawAsync(BuildSimpleSetFrame(0x00, 0x01, type: 0x04, valueByte: 0x00)); // mode = STANDBY
+        WriteRawAsync(BuildSimpleSetFrame(0x06, 0x08, type: 0x00, valueByte: 0x00)); // verified shape (native k())
 
     public Task<ProtocolResult> VentAsync() =>
-        WriteRawAsync(BuildSimpleSetFrame(0x00, 0x01, type: 0x04, valueByte: 0x03)); // mode = WIND
+        WriteRawAsync(BuildSimpleSetFrame(0x06, 0x08, type: 0x00, valueByte: 0x02)); // best-guess "vent"
 
     public Task<ProtocolResult> SetTargetCAsync(int celsius) =>
-        WriteRawAsync(BuildSimpleSetFrame(0x00, 0x05, type: 0x00, valueByte: (byte)celsius));
+        // No verified simple-pipeline DP for target temp — the native
+        // sets it as part of the F() complex-pipeline scene frame, not
+        // its own write. Until we port that, send a best-guess single-DP
+        // write that's of a shape the heater hopefully tolerates.
+        WriteRawAsync(BuildSimpleSetFrame(0x06, 0x05, type: 0x00, valueByte: (byte)celsius));
 
     public async Task<ProtocolResult> SetGearAsync(int gear)
     {
