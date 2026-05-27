@@ -132,9 +132,10 @@ class HcaloryProtocol(private val ctx: Context) : IHeaterProtocol {
             try {
                 Log.i(TAG, "post-connect: sending timestamp sync")
                 delay(100)
-                val ts = (System.currentTimeMillis() / 1000L).toInt()
-                val tsRes = writeRaw(buildTimestampSyncFrame(ts))
-                Log.i(TAG, "timestamp sync writeRaw -> $tsRes")
+                val ts = buildTimestampSyncFrame()
+                Log.i(TAG, "TX timestamp [${ts.size}B] ${ts.joinToString("") { "%02X".format(it) }}")
+                val tsRes = writeRaw(ts)
+                Log.i(TAG, "timestamp writeRaw -> $tsRes")
 
                 var idx = 0
                 while (true) {
@@ -156,71 +157,89 @@ class HcaloryProtocol(private val ctx: Context) : IHeaterProtocol {
         }
     }
 
-    // Build a literal-byte frame from the native HCalory app's wire dump.
-    // See OLDSRC/hcalory/POST_CONNECT_SEQUENCE.md.
+    // Build a literal-byte frame from the native HCalory app's wire format.
+    // Verified end-to-end against the live heater from the Windows test
+    // runner — the heater accepts these and the connection holds open
+    // indefinitely. See OLDSRC/hcalory/POST_CONNECT_SEQUENCE.md and the
+    // C# mirror at windows/src/TsgbHeater/Protocol/Hcalory/HcaloryProtocol.cs.
     //
-    // Wire layout (after re-reading byte-by-byte from the captured native
-    // frames — earlier code had an off-by-one assuming an 8-byte header
-    // when it's actually 7):
-    //   bytes 0-6: 7-byte fixed header `00 02 00 01 00 01 00`
-    //   bytes 7-8: 16-bit BE DP id        (e.g. 0A 0A for timestamp,
-    //                                            0E 04 for info query)
-    //   byte 9   : DP type byte           (00 for timestamp, 00 for query)
-    //   bytes 10-11: 16-bit BE value len
-    //   bytes 12..: value
-    //   last byte: trailing 0 / checksum slot
+    // Wire layout:
+    //   bytes 0..6  : 7-byte fixed header `00 02 00 01 00 01 00`
+    //   byte 7      : payload length (from byte 8 to end, inclusive of csum)
+    //   bytes 8..N-2: payload (DP descriptor + value)
+    //   byte  N-1   : checksum = (sum of bytes 8..N-2) & 0xFF
     //
-    // The "02" at byte 1 looked like a seq in the example but it's stable
-    // across re-runs in the captured frames, so we hold it at 0x02 too
-    // until we learn otherwise. (Tuya devices that DO use sequence
-    // numbers usually expose them as a 2-byte counter — not seen here.)
-    //
-    // Timestamp sync: DP id 0x0A0A, type 0x00, value = 4-byte LE epoch +
-    // 1 pad byte (the native dumped a 5-byte value field even though
-    // unix-epoch is 4 bytes).
-    private fun buildTimestampSyncFrame(epoch: Int): ByteArray {
-        val out = ByteArray(17)
-        // 7-byte fixed header
+    // Earlier code had three bugs (now fixed):
+    //   1. Never computed/appended the checksum byte
+    //   2. Info query had 18 zero bytes (was actually 8) — total 31B not 22B
+    //   3. Timestamp used LE epoch — only correct on the FFF0 family.
+    //      The BD39 family (which our heater uses) takes HH MM SS DOW.
+
+    private fun buildTimestampSyncFrame(): ByteArray {
+        // Layout (18 bytes):
+        //   0..6   : 00 02 00 01 00 01 00       (7-byte fixed header)
+        //   7,8    : 0A 0A                       (cmd / DP id)
+        //   9..11  : 00 00 05                    (value descriptor: type=0, len=5)
+        //  12..15  : HH MM SS DOW                (local time, ISO DOW)
+        //  16     : 00                           (trailing pad)
+        //  17     : checksum = sum(bytes 8..16) & 0xFF
+        val cal = java.util.Calendar.getInstance()
+        val hh = cal.get(java.util.Calendar.HOUR_OF_DAY).toByte()
+        val mm = cal.get(java.util.Calendar.MINUTE).toByte()
+        val ss = cal.get(java.util.Calendar.SECOND).toByte()
+        // Java Calendar.DAY_OF_WEEK is Sun=1..Sat=7; HCalory wants ISO
+        // Mon=1..Sun=7. Map.
+        val javaDow = cal.get(java.util.Calendar.DAY_OF_WEEK)
+        val dow = (if (javaDow == java.util.Calendar.SUNDAY) 7 else javaDow - 1).toByte()
+
+        val out = ByteArray(18)
         out[0] = 0x00; out[1] = 0x02
         out[2] = 0x00; out[3] = 0x01; out[4] = 0x00; out[5] = 0x01; out[6] = 0x00
-        // DP id 0x0A0A
         out[7] = 0x0A; out[8] = 0x0A
-        // DP type
         out[9] = 0x00
-        // value length = 5
         out[10] = 0x00; out[11] = 0x05
-        // value: epoch LE (4 bytes) + 1 pad
-        out[12] = (epoch         and 0xFF).toByte()
-        out[13] = ((epoch ushr  8) and 0xFF).toByte()
-        out[14] = ((epoch ushr 16) and 0xFF).toByte()
-        out[15] = ((epoch ushr 24) and 0xFF).toByte()
+        out[12] = hh; out[13] = mm; out[14] = ss; out[15] = dow
         out[16] = 0x00
+        out[17] = checksumPayload(out)
         return out
     }
 
-    // Info query template (31 bytes):
-    //   00 02 00 01 00 01 00 0E 04 00 00 09 [18 x 00] [SUBTYPE]
-    // DP id is 0x0E04, type 0x00. Value length field reads 9 but the
-    // actual payload is 18 zero bytes followed by the subtype (19 bytes
-    // total) — the native encoder ignores the discrepancy, so we mirror
-    // it byte-for-byte.
+    // Info query template (22 bytes):
+    //   00 02 00 01 00 01 00 0E 04 00 00 09 [8 x 00] [SUBTYPE] [csum]
     private fun buildInfoQueryFrame(subtype: Byte): ByteArray {
-        val out = ByteArray(31)
-        // 7-byte fixed header
+        val out = ByteArray(22)
         out[0] = 0x00; out[1] = 0x02
         out[2] = 0x00; out[3] = 0x01; out[4] = 0x00; out[5] = 0x01; out[6] = 0x00
-        // DP id 0x0E04
         out[7] = 0x0E; out[8] = 0x04
-        // DP type
         out[9] = 0x00
-        // value length nominally 9, but the actual encoded payload below
-        // is 19 bytes — replicating the native quirk
         out[10] = 0x00; out[11] = 0x09
-        // 18 zero bytes
-        for (i in 12..29) out[i] = 0x00
-        // subtype at the end
-        out[30] = subtype
+        // bytes 12..19 stay 0 (8 zero bytes — NOT 18 as an earlier
+        // analysis assumed; that was a miscounting of the native template)
+        out[20] = subtype
+        out[21] = checksumPayload(out)
         return out
+    }
+
+    // Sum of bytes 8..N-2 mod 256. Replicates j2.j.b.f() in the decompile.
+    // The native wrapper a() / u() invokes this over the payload section,
+    // not the fixed-header section.
+    private fun checksumPayload(frame: ByteArray): Byte {
+        var s = 0
+        for (i in 8 until frame.size - 1) s = (s + (frame[i].toInt() and 0xFF)) and 0xFF
+        return s.toByte()
+    }
+
+    /**
+     * Test hook for the Test Cmd page (or any other protocol experiment):
+     * pass the frame WITHOUT its trailing checksum byte; we'll compute and
+     * append it and send. Mirrors the Windows-side SendRawTestFrameAsync.
+     */
+    suspend fun sendRawTestFrame(frameWithoutChecksum: ByteArray): Result<Unit> {
+        val b = ByteArray(frameWithoutChecksum.size + 1)
+        System.arraycopy(frameWithoutChecksum, 0, b, 0, frameWithoutChecksum.size)
+        b[b.size - 1] = checksumPayload(b)
+        Log.i(TAG, "TX testFrame [${b.size}B] ${b.joinToString("") { "%02X".format(it) }}")
+        return writeRaw(b)
     }
 
     // --- IHeaterProtocol: commands ---------------------------------
@@ -398,6 +417,7 @@ class HcaloryProtocol(private val ctx: Context) : IHeaterProtocol {
     // --- Notify ingestion + DP → CommonTelemetry -------------------
 
     private fun ingest(bytes: ByteArray) {
+        Log.i(TAG, "RX [${bytes.size}B] ${bytes.joinToString("") { "%02X".format(it) }}")
         _rawFrames.tryEmit(bytes)
         val frame = TuyaBleFrame.decode(bytes) ?: return
         var t = _telemetry.value
