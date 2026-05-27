@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows10.0.22621.0</TargetFramework>
+    <UseWPF>false</UseWPF>
+    <UseWindowsForms>false</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>HcaloryTest</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <!-- Standalone runner — no UI, no app shell. Only purpose: drive the
+         HcaloryProtocol against the real heater so we can iterate on the
+         wire format without rebuilding the WPF app. Console output IS the
+         logs (we also write through TsgbHeater.Services.Log to the file). -->
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TsgbHeater\TsgbHeater.csproj" />
+  </ItemGroup>
+</Project>
