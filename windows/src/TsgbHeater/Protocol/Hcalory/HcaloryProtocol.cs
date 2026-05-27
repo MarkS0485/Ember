@@ -302,6 +302,20 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
         return (byte)s;
     }
 
+    /// <summary>
+    /// Test hook: send a hand-crafted frame, computing and appending the
+    /// checksum byte. Pass the frame WITHOUT the trailing checksum slot;
+    /// we'll add it (so for an 18-byte wire frame, pass 17 bytes).
+    /// </summary>
+    public Task<ProtocolResult> SendRawTestFrameAsync(byte[] frameWithoutChecksum)
+    {
+        var b = new byte[frameWithoutChecksum.Length + 1];
+        Array.Copy(frameWithoutChecksum, b, frameWithoutChecksum.Length);
+        b[^1] = ChecksumPayload(b);
+        Log.I("hcalory", $"TX testFrame [{b.Length}B] {Convert.ToHexString(b)}");
+        return WriteRawAsync(b);
+    }
+
     // --- Notification ingest ----------------------------------------
 
     private void OnNotify(GattCharacteristic sender, GattValueChangedEventArgs args)
