@@ -186,6 +186,127 @@
                         Visibility="{Binding FaultLabel, Converter={StaticResource StringNotEmptyToVis}}">
                     <TextBlock Text="{Binding FaultLabel}" Foreground="White" FontWeight="SemiBold"/>
                 </Border>
+
+                <!-- Fuel tank card. Tracks current litres, shows hours
+                     remaining at the live gear's consumption rate, and
+                     surfaces warnings/critical/shutdown banners as the
+                     tank empties. Refill and per-heater config (tank
+                     size + consumption range) live inline. -->
+                <Border Style="{StaticResource Card}" Margin="0,8,0,0">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Fuel" Style="{StaticResource H2}"/>
+                            <Button Grid.Column="1" Style="{StaticResource OutlinedButton}"
+                                    Content="Refill" Padding="10,3" Margin="0,0,6,0"
+                                    Command="{Binding OpenRefillCommand}"/>
+                            <Button Grid.Column="2" Style="{StaticResource OutlinedButton}"
+                                    Content="⚙" Padding="8,3"
+                                    Command="{Binding OpenFuelSettingsCommand}"/>
+                        </Grid>
+
+                        <!-- Level + capacity readouts -->
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="{Binding FuelLabel}"
+                                       FontSize="22" FontWeight="SemiBold"
+                                       Foreground="{StaticResource InkHi}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding FuelHoursRemainingLabel}"
+                                       Style="{StaticResource Caption}" VerticalAlignment="Bottom"/>
+                        </Grid>
+
+                        <!-- Visual level bar. Maximum maps to TankLitres,
+                             value to CurrentLitres. WPF ProgressBar gives
+                             us the gauge feel without a custom control. -->
+                        <ProgressBar Margin="0,6,0,0" Height="10"
+                                     Minimum="0"
+                                     Maximum="{Binding FuelTankLitres}"
+                                     Value="{Binding FuelCurrentLitres, Mode=OneWay}"/>
+
+                        <TextBlock Text="{Binding FuelCurrentConsumptionLabel}"
+                                   Style="{StaticResource Caption}" Margin="0,6,0,0"/>
+
+                        <!-- Alert banner — colour-coded via FuelAlertKind.
+                             Only visible when there's an active alert. -->
+                        <Border CornerRadius="6" Padding="10,6" Margin="0,8,0,0"
+                                Background="{Binding FuelAlertKind, Converter={StaticResource FuelAlertKindToBrush}}"
+                                Visibility="{Binding FuelAlertLabel, Converter={StaticResource StringNotEmptyToVis}}">
+                            <TextBlock Text="{Binding FuelAlertLabel}" Foreground="White" FontWeight="SemiBold"/>
+                        </Border>
+
+                        <!-- Refill mini-dialog (inline, not a popup so the
+                             user keeps the level visible while adjusting). -->
+                        <Border CornerRadius="6" Padding="10" Margin="0,8,0,0"
+                                Background="{StaticResource Body2}"
+                                BorderBrush="{StaticResource LineGrey}" BorderThickness="1"
+                                Visibility="{Binding IsRefillOpen, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <TextBlock Text="How many litres did you add?" Style="{StaticResource Body}"/>
+                                <Grid Margin="0,6,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0" Padding="6,3"
+                                             Text="{Binding RefillLitresInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <Button Grid.Column="1" Style="{StaticResource OutlinedButton}"
+                                            Content="Cancel" Padding="10,3" Margin="6,0,4,0"
+                                            Command="{Binding CancelRefillCommand}"/>
+                                    <Button Grid.Column="2" Style="{StaticResource PrimaryButton}"
+                                            Content="Add" Padding="10,3"
+                                            Command="{Binding ApplyRefillCommand}"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Fuel-config mini-dialog: tank size + consumption range. -->
+                        <Border CornerRadius="6" Padding="10" Margin="0,8,0,0"
+                                Background="{StaticResource Body2}"
+                                BorderBrush="{StaticResource LineGrey}" BorderThickness="1"
+                                Visibility="{Binding IsFuelSettingsOpen, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <TextBlock Text="Fuel config" Style="{StaticResource H2}"/>
+                                <Grid Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition/><RowDefinition/><RowDefinition/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource Body}"
+                                               Text="Tank (L):" VerticalAlignment="Center" Margin="0,0,8,4"/>
+                                    <TextBox  Grid.Row="0" Grid.Column="1" Padding="6,3" Margin="0,0,0,4"
+                                              Text="{Binding FuelSettingsTankInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource Body}"
+                                               Text="Min L/h (gear 1):" VerticalAlignment="Center" Margin="0,0,8,4"/>
+                                    <TextBox  Grid.Row="1" Grid.Column="1" Padding="6,3" Margin="0,0,0,4"
+                                              Text="{Binding FuelSettingsLowInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource Body}"
+                                               Text="Max L/h (gear 10):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBox  Grid.Row="2" Grid.Column="1" Padding="6,3"
+                                              Text="{Binding FuelSettingsHighInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                </Grid>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                                    <Button Style="{StaticResource OutlinedButton}"
+                                            Content="Cancel" Padding="10,3" Margin="0,0,6,0"
+                                            Command="{Binding CancelFuelSettingsCommand}"/>
+                                    <Button Style="{StaticResource PrimaryButton}"
+                                            Content="Save" Padding="10,3"
+                                            Command="{Binding ApplyFuelSettingsCommand}"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
             </StackPanel>
 
             <!-- RIGHT column: compact stats -->

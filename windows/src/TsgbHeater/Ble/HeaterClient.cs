@@ -51,6 +51,9 @@ public sealed class HeaterClient : IAsyncDisposable
 
     public bool VerboseRx { get; set; } = false;
 
+    /// <summary>MAC of the heater this client is currently connected to (or null).</summary>
+    public string? CurrentMac => _currentMac;
+
     // --- Internals ----------------------------------------------------
 
     private ConnectionState _state = ConnectionState.Idle;

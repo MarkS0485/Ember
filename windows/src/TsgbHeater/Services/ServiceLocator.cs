@@ -18,6 +18,8 @@ public static class ServiceLocator
     public static GroupController         GroupCtl       { get; private set; } = null!;
     public static ApiServer               Api            { get; private set; } = null!;
     public static UpnpForwarder           Upnp           { get; private set; } = null!;
+    public static FuelStore               Fuel           { get; private set; } = null!;
+    public static FuelTracker             FuelCtl        { get; private set; } = null!;
 
     private static bool _initialised;
 
@@ -38,8 +40,11 @@ public static class ServiceLocator
         GroupCtl       = new GroupController(Ble, Groups, BoundDevices);
         Api            = new ApiServer();
         Upnp           = new UpnpForwarder();
+        Fuel           = new FuelStore();
+        FuelCtl        = new FuelTracker(Ble, BoundDevices, Fuel);
         Scheduler.Start();
         AutoController.Start();
+        FuelCtl.Start();
         _initialised = true;
     }
 
@@ -50,6 +55,7 @@ public static class ServiceLocator
         Upnp.Stop();
         _ = Scheduler.DisposeAsync().AsTask();
         _ = AutoController.DisposeAsync().AsTask();
+        _ = FuelCtl.DisposeAsync().AsTask();
         _ = Ble.DisposeAsync().AsTask();
     }
 }

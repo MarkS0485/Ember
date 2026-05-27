@@ -100,6 +100,45 @@ public sealed class BoundDeviceStore
         Changed?.Invoke();
     }
 
+    /// <summary>
+    /// Update the per-heater fuel-tank config (tank litres, consumption
+    /// range). Null arguments keep the existing value, so the call site
+    /// can update any subset.
+    /// </summary>
+    public void UpdateFuelConfig(string mac,
+                                  double? tankLitres = null,
+                                  double? consumptionLowLph = null,
+                                  double? consumptionHighLph = null)
+    {
+        lock (_lock)
+        {
+            for (int i = 0; i < _all.Count; i++)
+            {
+                if (_all[i].Mac.Equals(mac, StringComparison.OrdinalIgnoreCase))
+                {
+                    _all[i] = _all[i] with
+                    {
+                        TankLitres         = tankLitres         ?? _all[i].TankLitres,
+                        ConsumptionLowLph  = consumptionLowLph  ?? _all[i].ConsumptionLowLph,
+                        ConsumptionHighLph = consumptionHighLph ?? _all[i].ConsumptionHighLph,
+                    };
+                }
+            }
+            Save();
+        }
+        Changed?.Invoke();
+    }
+
+    /// <summary>Convenience lookup by MAC. Returns null if not bound.</summary>
+    public BoundDevice? FindByMac(string mac)
+    {
+        lock (_lock)
+        {
+            return _all.FirstOrDefault(b =>
+                b.Mac.Equals(mac, StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
     public void SetCurrent(string? mac)
     {
         lock (_lock)

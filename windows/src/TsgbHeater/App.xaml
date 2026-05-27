@@ -50,6 +50,7 @@
             <ui:BoolToSelectedFgInvConverter     x:Key="BoolToSelectedFgInv"/>
             <ui:BoolToReadyLabelConverter        x:Key="BoolToReadyLabel"/>
             <ui:BoolToReadyKindConverter         x:Key="BoolToReadyKind"/>
+            <ui:FuelAlertKindToBrushConverter    x:Key="FuelAlertKindToBrush"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

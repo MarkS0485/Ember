@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
+using System.Windows.Media;
 using TsgbHeater.Ui.Controls;
 
 namespace TsgbHeater.Ui;
@@ -75,6 +76,28 @@ public sealed class StringNotEmptyToVisibilityConverter : IValueConverter
         => string.IsNullOrEmpty(value as string) ? Visibility.Collapsed : Visibility.Visible;
     public object ConvertBack(object? value, Type t, object? param, CultureInfo c)
         => throw new NotSupportedException();
+}
+
+// Maps the FuelTracker alert-level string ("warn" / "critical" /
+// "shutdown") to a banner background. Empty/unknown collapses to
+// transparent — the banner itself is hidden via StringNotEmptyToVis.
+public sealed class FuelAlertKindToBrushConverter : IValueConverter
+{
+    public object Convert(object? value, Type t, object? param, CultureInfo c)
+    {
+        var kind = value as string;
+        // Looked up by key so theme switches just work. Amber for the
+        // warning, hot red for critical / impending shutdown.
+        var key = kind switch
+        {
+            "warn"     => "FuelAmber",
+            "critical" => "ErrRed",
+            "shutdown" => "ErrRed",
+            _          => "Body2",
+        };
+        return Application.Current.TryFindResource(key) ?? Brushes.Transparent;
+    }
+    public object ConvertBack(object? value, Type t, object? param, CultureInfo c) => throw new NotSupportedException();
 }
 
 public sealed class BoolToReadyLabelConverter : IValueConverter
