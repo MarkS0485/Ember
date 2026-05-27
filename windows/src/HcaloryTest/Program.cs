@@ -50,33 +50,39 @@ Console.WriteLine();
 Console.WriteLine($">> holding connection for {holdSeconds}s — watch frames above");
 Console.WriteLine();
 
-// After 5 seconds, send a safe, non-destructive command and watch
-// the response. J() in the native code (k2/e.java:234) — set
-// distance unit, value 0, METER. Layout (15 wire bytes, last is
-// checksum we add):
-//   00 02 00 01 00 01 00 07 06 00 00 02 00 00
-//   ^ 7-byte hdr ^ ^len ^ DP 0x0706 ^   ^value=00 unit=00 (METER)
+// Experiment: after 8s, send the COMPLEX-PIPELINE "set temp unit"
+// command (E() in the native code) — the heater uses t()/u() for
+// real settings, and the response might be different from the
+// generic 0B 0C ack we keep getting from a()-based queries.
 //
-// If the heater echoes back anything other than the standard
-// 19-byte ack, that's a clue the command was actually understood.
-await Task.Delay(5000);
+// Native E(°C) bytes worked out by hand from k2/e.java:169 +
+// r() + t() + u() in j2/j.java:
+//   r("02", true, 10) + d("0B","00",5) + "02" + "00" + "FF"
+//   → after t(): patches len bytes at 12-16 and 20-24
+//   → after u(): drops "FF", appends checksum of bytes 8..13
+//
+//   final: 00 02 00 01 00 01 00 07 0B 00 00 02 02 00 0F
+//          ^ 7B hdr           ^ payloadLen=7   ^ value: flag=02, unit=00 (°C)
+//                                ^ DP 0x0B type 0x00 len 0x0002
+await Task.Delay(8000);
 Console.WriteLine();
-Console.WriteLine(">> sending test command: J(0, METER) — set distance unit");
-var distanceUnitFrame = new byte[]
+Console.WriteLine(">> sending complex-pipeline command: E(Celsius) — set temp unit");
+// Pass without checksum, SendRawTestFrameAsync adds it.
+var setTempUnitFrame = new byte[]
 {
     0x00, 0x02, 0x00, 0x01, 0x00, 0x01, 0x00,
-    0x07,                   // payload length (from byte 8 onwards)
-    0x06,                   // continued DP id (so 0x0706)
+    0x07,                   // payload length (from byte 8 to end inclusive)
+    0x0B,                   // DP id
     0x00,                   // DP type
     0x00, 0x02,             // value length = 2
-    0x00,                   // value (0)
-    0x00,                   // unit (METER)
+    0x02,                   // flag byte (from native)
+    0x00,                   // unit (00 = Celsius)
 };
-var r2 = await proto.SendRawTestFrameAsync(distanceUnitFrame);
-Console.WriteLine($">> distance unit result: ok={r2.Ok} err={r2.Error}");
+var rCmd = await proto.SendRawTestFrameAsync(setTempUnitFrame);
+Console.WriteLine($">> set-temp-unit result: ok={rCmd.Ok} err={rCmd.Error}");
 Console.WriteLine();
 
-await Task.Delay(TimeSpan.FromSeconds(holdSeconds - 5));
+await Task.Delay(TimeSpan.FromSeconds(holdSeconds - 8));
 
 Console.WriteLine();
 Console.WriteLine(">> DisconnectAsync");
