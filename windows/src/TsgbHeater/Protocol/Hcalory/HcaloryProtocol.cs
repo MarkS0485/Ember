@@ -89,7 +89,9 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
             Log.I("hcalory", "CCCD subscribed — starting post-connect sequence");
 
             IsConnected = true;
+            _connectedAtMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             ConnectionChanged?.Invoke(true);
+            Log.I("hcalory", $"=== CONNECTED to {mac} @ {DateTime.Now:HH:mm:ss.fff} ===");
 
             // Kick off the timestamp sync + 300ms info-query loop. Fire-
             // and-forget — it runs on its own task until DisconnectAsync
@@ -184,21 +186,29 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
     // F() complex-pipeline (DP 0x0B mode/scene frame) — but that needs
     // a verified scene-id byte which we'll only get from a Frida capture.
 
-    public Task<ProtocolResult> StartAsync() =>
-        WriteRawAsync(BuildSimpleSetFrame(0x06, 0x08, type: 0x00, valueByte: 0x01)); // best-guess "on"
+    public Task<ProtocolResult> StartAsync()
+    {
+        Log.I("hcalory", "user action: START — sending DP 0x0608 type=00 value=01");
+        return WriteRawAsync(BuildSimpleSetFrame(0x06, 0x08, type: 0x00, valueByte: 0x01));
+    }
 
-    public Task<ProtocolResult> StopAsync() =>
-        WriteRawAsync(BuildSimpleSetFrame(0x06, 0x08, type: 0x00, valueByte: 0x00)); // verified shape (native k())
+    public Task<ProtocolResult> StopAsync()
+    {
+        Log.I("hcalory", "user action: STOP — sending DP 0x0608 type=00 value=00 (verified shape from native k())");
+        return WriteRawAsync(BuildSimpleSetFrame(0x06, 0x08, type: 0x00, valueByte: 0x00));
+    }
 
-    public Task<ProtocolResult> VentAsync() =>
-        WriteRawAsync(BuildSimpleSetFrame(0x06, 0x08, type: 0x00, valueByte: 0x02)); // best-guess "vent"
+    public Task<ProtocolResult> VentAsync()
+    {
+        Log.I("hcalory", "user action: VENT — sending DP 0x0608 type=00 value=02");
+        return WriteRawAsync(BuildSimpleSetFrame(0x06, 0x08, type: 0x00, valueByte: 0x02));
+    }
 
-    public Task<ProtocolResult> SetTargetCAsync(int celsius) =>
-        // No verified simple-pipeline DP for target temp — the native
-        // sets it as part of the F() complex-pipeline scene frame, not
-        // its own write. Until we port that, send a best-guess single-DP
-        // write that's of a shape the heater hopefully tolerates.
-        WriteRawAsync(BuildSimpleSetFrame(0x06, 0x05, type: 0x00, valueByte: (byte)celsius));
+    public Task<ProtocolResult> SetTargetCAsync(int celsius)
+    {
+        Log.I("hcalory", $"user action: SET TARGET = {celsius}°C — sending DP 0x0605 type=00");
+        return WriteRawAsync(BuildSimpleSetFrame(0x06, 0x05, type: 0x00, valueByte: (byte)celsius));
+    }
 
     public async Task<ProtocolResult> SetGearAsync(int gear)
     {
@@ -243,7 +253,11 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
     private async Task<ProtocolResult> WriteRawAsync(byte[] bytes)
     {
         var ch = _writeChar;
-        if (ch == null) return ProtocolResult.Fail("not connected");
+        if (ch == null)
+        {
+            Log.W("hcalory", $"TX dropped — not connected. wanted to send [{bytes.Length}B] {Convert.ToHexString(bytes)}");
+            return ProtocolResult.Fail("not connected");
+        }
         try
         {
             Log.I("hcalory", $"TX [{bytes.Length}B] {Convert.ToHexString(bytes)}");
@@ -252,11 +266,17 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
             writer.WriteBytes(bytes);
             var status = await ch.WriteValueAsync(writer.DetachBuffer(),
                 GattWriteOption.WriteWithoutResponse).AsTask().ConfigureAwait(false);
+            if (status != GattCommunicationStatus.Success)
+                Log.W("hcalory", $"TX gatt status={status} for last frame");
             return status == GattCommunicationStatus.Success
                 ? ProtocolResult.Success
                 : ProtocolResult.Fail($"write returned {status}");
         }
-        catch (Exception ex) { return ProtocolResult.Fail(ex.Message); }
+        catch (Exception ex)
+        {
+            Log.W("hcalory", $"TX threw: {ex.GetType().Name}: {ex.Message}");
+            return ProtocolResult.Fail(ex.Message);
+        }
     }
 
     // Build an HCalory simple-pipeline frame for a single-byte value
@@ -454,14 +474,21 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
 
     private void OnConnectionStatusChanged(BluetoothLEDevice sender, object args)
     {
+        var now = DateTime.Now.ToString("HH:mm:ss.fff");
+        Log.I("hcalory", $"ConnectionStatusChanged @ {now}: status={sender.ConnectionStatus} for {_currentMac}");
         if (sender.ConnectionStatus == BluetoothConnectionStatus.Disconnected)
         {
-            Log.I("hcalory", "peer disconnected");
+            Log.W("hcalory", $"peer disconnected @ {now} — keepalive cancelled. Connection was alive {(_connectedAtMs > 0 ? (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - _connectedAtMs) : 0)}ms");
             _keepaliveCts?.Cancel();
             IsConnected = false;
             ConnectionChanged?.Invoke(false);
         }
     }
+
+    // Timestamp of last successful connect — lets us calculate how long
+    // we stayed alive each time the peer drops us. Useful for diagnosing
+    // whether commands cause an immediate disconnect vs an eventual timeout.
+    private long _connectedAtMs;
 
     // --- Service / characteristic discovery -------------------------
 

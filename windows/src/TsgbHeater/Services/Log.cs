@@ -19,8 +19,19 @@ public static class Log
         try
         {
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Path)!);
-            // Truncate at process start so we always have a fresh per-session log.
-            File.WriteAllText(Path, $"[{DateTime.Now:O}] log opened\n");
+            // Truncate at process start so we always have a fresh per-session
+            // log. The header includes assembly version + build timestamp so
+            // a reader (human or otherwise) can confirm which build produced
+            // the lines below.
+            var asm = System.Reflection.Assembly.GetExecutingAssembly();
+            var asmName = asm.GetName().Name ?? "TsgbHeater";
+            var asmVer  = asm.GetName().Version?.ToString() ?? "?";
+            var built   = File.Exists(asm.Location)
+                ? File.GetLastWriteTime(asm.Location).ToString("O")
+                : "?";
+            File.WriteAllText(Path,
+                $"=== {asmName} v{asmVer} (built {built}) ===\n" +
+                $"[{DateTime.Now:O}] session start — log open\n");
         }
         catch { /* never let the logger throw into hot paths */ }
     }
