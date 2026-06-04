@@ -92,6 +92,17 @@ class AppSettingsStore(private val ctx: Context) {
         ctx.appSettingsDataStore.edit { it[KEY_SELECTED_RUN_MODE] = wire }
     }
 
+    // Hidden developer mode. Off by default; unlocked by tapping the version
+    // on the About screen. Gates the diagnostic tooling (raw-frame log, test
+    // commands, altitude probe, heater test mode) so a normal install never
+    // sees it, but it stays one gesture away for field debugging.
+    val developerMode: Flow<Boolean> =
+        ctx.appSettingsDataStore.data.map { it[KEY_DEVELOPER_MODE] ?: false }
+
+    suspend fun setDeveloperMode(v: Boolean) {
+        ctx.appSettingsDataStore.edit { it[KEY_DEVELOPER_MODE] = v }
+    }
+
     private companion object {
         val KEY_AUTO_START_STOP: Preferences.Key<Boolean> = booleanPreferencesKey("auto_start_stop")
         val KEY_KEEP_ALIVE:     Preferences.Key<Boolean>  = booleanPreferencesKey("keep_alive")
@@ -106,5 +117,6 @@ class AppSettingsStore(private val ctx: Context) {
         val KEY_RULE_COOLDOWN_S:    Preferences.Key<Int>     = intPreferencesKey("rule_cooldown_s")
         val KEY_RULE_STALE_S:       Preferences.Key<Int>     = intPreferencesKey("rule_stale_s")
         val KEY_SELECTED_RUN_MODE:  Preferences.Key<Int>     = intPreferencesKey("selected_run_mode")
+        val KEY_DEVELOPER_MODE:     Preferences.Key<Boolean> = booleanPreferencesKey("developer_mode")
     }
 }

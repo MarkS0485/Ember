@@ -157,6 +157,12 @@ class HeaterService : LifecycleService() {
     // heater is paired so a stale widget can't lock up the service.
     private fun runWidgetCommand(send: suspend (BleManager) -> Boolean) {
         lifecycleScope.launch {
+            // Home-screen control widgets are a Pro feature — ignore taps
+            // when entitlement is absent so a free/lapsed widget is inert.
+            if (!ServiceLocator.entitlements.isProActive.value) {
+                Log.w(TAG, "Widget command ignored — Pro required")
+                return@launch
+            }
             val ble = ServiceLocator.ble
             val mac = ServiceLocator.boundDevices.currentMac.first()
             if (mac.isNullOrBlank()) {

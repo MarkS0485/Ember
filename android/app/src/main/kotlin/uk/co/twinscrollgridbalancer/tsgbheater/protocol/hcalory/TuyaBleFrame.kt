@@ -1,27 +1,37 @@
 package uk.co.twinscrollgridbalancer.tsgbheater.protocol.hcalory
 
-// Tuya BLE frame codec. The protocol is documented at
-// https://developer.tuya.com/en/docs/iot/tuya-ble-sdk-protocol and was
-// cross-checked against the decompiled HCalory app's encoder/decoder
-// (OLDSRC/hcalory/sources/sources/j2/j.java).
+// Tuya-style BLE frame codec, matched byte-for-byte against the live
+// HCalory heater (MAC ...08:E3) and the decompiled app's encode/decode
+// (OLDSRC/hcalory/sources/sources/j2/j.java — b.c() decoder, b.f()
+// checksum). The earlier guess at the layout (seq-based header,
+// whole-frame checksum) was wrong on the wire; this is the verified
+// format.
 //
-// Frame layout (hex-string-on-the-wire representation):
+// Frame layout (raw bytes on the wire):
 //
-//   pos   bytes   field          meaning
-//   ----  ------  -------------  ----------------------------------
-//   0     1       version        protocol version byte (0x00 in HCalory)
-//   1     1       seq            monotonically incrementing seq id
-//   2     1       cmd0           sub-command byte (often 0x00 for DP)
-//   3     1       cmd1
-//   4     1       cmd2
-//   5     1       flags          status flags
-//   6     2       payloadLen     big-endian length of payload portion
-//   8..   N-2     payload        DP units, each: dpid(1)|dpType(1)|dpLen(2BE)|value(dpLen)
-//   N-1   1       checksum       (sum of preceding bytes) & 0xFF
+//   pos     bytes   field         meaning
+//   ----    ------  ------------  -------------------------------------
+//   0       1       version       0x00
+//   1       1       marker        0x02 app->device (fixed); increments device->app
+//   2..4    3       00 01 00      fixed
+//   5       1       flag          0x01
+//   6..7    2       payloadLen    BE; = N-8, i.e. count of bytes 8..N-1
+//                                 (the DP descriptor + value + checksum byte)
+//   8       1       dpId          data-point id / message type (the dispatch key)
+//   9       1       dpType        DP type
+//   10..11  2       dpLen         BE length of the value
+//   12..    dpLen   value
+//   N-1     1       checksum      sum(bytes 8..N-2) & 0xFF  (PAYLOAD ONLY,
+//                                 excludes the 7-byte header and itself)
 //
-// Note: the on-the-wire format is BYTES — the hex-string layer in
-// HCalory's code is just how their parser handles it internally. We
-// keep the codec working in raw bytes for clarity.
+// Two things the wire taught us that the docs got wrong:
+//   * The checksum covers only bytes 8..N-2, NOT the header.
+//   * payloadLen at 6..7 INCLUDES the trailing checksum byte (N-8), so a
+//     valid frame has raw.size == 8 + payloadLen.
+//
+// The "0A0C" / "0909" / "0E04" tokens in the decompiled command strings
+// are NOT 2-byte DP ids — they are [payloadLen-lo][dpId] fused together.
+// The real dpId is the single byte at offset 8.
 //
 // Data Point (DP) types per Tuya spec:
 //   0x00 raw      - opaque blob
@@ -76,17 +86,22 @@ object TuyaBleFrame {
             p += dp.value.size
         }
 
+        // payloadLen (bytes 6..7) counts the DP bytes PLUS the trailing
+        // checksum byte, so it equals (N - 8). Header is the fixed native
+        // preamble the heater expects from a central.
         val out = ByteArray(8 + payload.size + 1)
-        out[0] = (frame.version and 0xFF).toByte()
-        out[1] = (frame.seq and 0xFF).toByte()
-        out[2] = (frame.cmd0 and 0xFF).toByte()
-        out[3] = (frame.cmd1 and 0xFF).toByte()
-        out[4] = (frame.cmd2 and 0xFF).toByte()
-        out[5] = (frame.flags and 0xFF).toByte()
-        out[6] = ((payload.size ushr 8) and 0xFF).toByte()
-        out[7] = (payload.size and 0xFF).toByte()
+        val payloadLen = payload.size + 1
+        out[0] = 0x00
+        out[1] = 0x02
+        out[2] = 0x00
+        out[3] = 0x01
+        out[4] = 0x00
+        out[5] = 0x01
+        out[6] = ((payloadLen ushr 8) and 0xFF).toByte()
+        out[7] = (payloadLen and 0xFF).toByte()
         System.arraycopy(payload, 0, out, 8, payload.size)
-        out[out.size - 1] = checksum(out, 0, out.size - 1).toByte()
+        // Checksum is PAYLOAD ONLY: sum of bytes 8..N-2.
+        out[out.size - 1] = checksum(out, 8, out.size - 1).toByte()
         return out
     }
 
@@ -96,16 +111,19 @@ object TuyaBleFrame {
     fun decode(raw: ByteArray): Frame? {
         if (raw.size < 9) return null  // 8-byte header + 1-byte checksum minimum
 
+        // payloadLen at 6..7 counts bytes 8..N-1 (DP bytes + checksum), so a
+        // valid frame has raw.size == 8 + payloadLen.
         val payloadLen = ((raw[6].toInt() and 0xFF) shl 8) or (raw[7].toInt() and 0xFF)
-        if (8 + payloadLen + 1 != raw.size) return null
+        if (8 + payloadLen != raw.size) return null
 
-        val expected = checksum(raw, 0, raw.size - 1) and 0xFF
+        // Checksum is PAYLOAD ONLY: sum of bytes 8..N-2.
+        val expected = checksum(raw, 8, raw.size - 1) and 0xFF
         val seen     = raw[raw.size - 1].toInt() and 0xFF
         if (expected != seen) return null
 
         val dps = mutableListOf<Dp>()
         var p = 8
-        val end = 8 + payloadLen
+        val end = raw.size - 1  // DP region ends before the checksum byte
         while (p < end) {
             if (p + 4 > end) return null
             val id   = raw[p].toInt() and 0xFF

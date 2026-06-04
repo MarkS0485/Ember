@@ -1,33 +1,37 @@
 # Windows client
 
-Companion to the Android app. Same BLE protocol (see `../docs/BLE_PROTOCOL.md`),
-re-implemented for a Windows host so the laptop / desktop can talk to
-the heater without a phone in the loop.
+Companion to the Android app — the same BLE protocol (see
+`../docs/BLE_PROTOCOL.md`), re-implemented for a Windows host so a laptop or
+desktop can talk to the heater without a phone in the loop.
 
-## Status
+## Stack
 
-Empty placeholder. Stack and scope to be decided.
+- **C# / .NET 10**, WPF (MVVM via CommunityToolkit.Mvvm), x64.
+- BLE through the native `Windows.Devices.Bluetooth.*` stack — no contracts
+  NuGet needed (targets the Windows 11 SDK).
+- An optional **remote API server** (ASP.NET Core Kestrel hosted in-process):
+  HMAC-authenticated requests, a self-signed certificate, QR-code pairing
+  (QRCoder), and optional UPnP port-forwarding (Mono.Nat). The Android app
+  pairs to this to control the heater from outside Bluetooth range.
 
-## Likely shape
+## Build & run
 
-Two candidate stacks, both work fine against the heater:
+Requires the .NET 10 SDK. From this folder:
 
-- **Python (`bleak`)** — fastest iteration, ~1 file, async API. Good for
-  protocol exploration, sniffing, and one-off scripts.
-- **C# / .NET 8 with `Windows.Devices.Bluetooth.*`** — first-class
-  Windows BLE API, native UI (WinUI 3 / WPF / Avalonia). The right home
-  for an always-on Windows controller.
+```
+dotnet build TsgbHeater.sln
+dotnet run --project src/TsgbHeater      # launch the WPF app
+```
 
-The protocol layer in `../android/app/.../ble/FrameCodec.kt` has zero
-Android dependencies; the CRC + builders + parsers translate near-line-
-for-line to either target.
+- `src/TsgbHeater`  — the WPF application (scan, bind, control, schedule,
+  auto start/stop, groups, fuel tracking, diagnostics, API server).
+- `src/HcaloryTest` — a console harness for protocol bring-up and sniffing.
 
 ## What the host needs
 
-- Bluetooth 4.0+ radio with the Microsoft BLE stack active (BthLEEnum
-  service running). On Win11 24H2 the driver file is
-  `Microsoft.Bluetooth.Legacy.LEEnumerator.sys` (renamed from
-  `bthleenum.sys` in earlier builds).
-- Bluetooth turned on (obvious in hindsight).
-- The heater within ~10 m, advertising — happens whenever it isn't
-  already connected to another central.
+- A Bluetooth 4.0+ radio with the Microsoft BLE stack active (the
+  `BthLEEnum` service — file `Microsoft.Bluetooth.Legacy.LEEnumerator.sys` on
+  Win11 24H2, renamed from `bthleenum.sys` in earlier builds).
+- Bluetooth turned on.
+- The heater within ~10 m and advertising (happens whenever it isn't already
+  connected to another central).

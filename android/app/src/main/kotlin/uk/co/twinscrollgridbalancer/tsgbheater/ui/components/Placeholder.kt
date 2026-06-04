@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import uk.co.twinscrollgridbalancer.tsgbheater.ui.theme.FuelAmber
 import uk.co.twinscrollgridbalancer.tsgbheater.ui.theme.LineGreyDk
 
 // One whole-screen body used by every not-yet-wired stub. Renders a card
@@ -137,7 +138,8 @@ private fun NotWiredChip() {
 }
 
 // One actionable row used by the Me tab to list every sub-screen. Mirrors
-// the SectionCard style from the website's link tiles.
+// the SectionCard style from the website's link tiles. An optional [badge]
+// renders a small pill before the chevron (used for the "PRO" lock tag).
 @Composable
 fun NavListItem(
     icon: ImageVector,
@@ -145,6 +147,7 @@ fun NavListItem(
     subtitle: String,
     accent: Color,
     onClick: () -> Unit,
+    badge: String? = null,
 ) {
     Row(
         modifier = Modifier
@@ -183,10 +186,31 @@ fun NavListItem(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        if (badge != null) {
+            ProPill(badge)
+        }
         Icon(
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.outline,
+        )
+    }
+}
+
+// Small accent pill used as a trailing tag on a NavListItem (e.g. "PRO").
+@Composable
+private fun ProPill(text: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(FuelAmber.copy(alpha = 0.18f))
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+    ) {
+        Text(
+            text  = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = FuelAmber,
+            fontWeight = FontWeight.SemiBold,
         )
     }
 }

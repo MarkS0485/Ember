@@ -41,13 +41,20 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
     private int                      _seq;
     private CancellationTokenSource? _keepaliveCts;
 
-    // The native app cycles through these subtypes via DP 0x0E04 queries
-    // every 300ms after sending the initial timestamp sync. Each subtype
-    // asks the heater to return a different slice of its state.
-    private static readonly byte[] InfoQuerySubtypes = new byte[]
-    {
-        0x00, 0x0A, 0x0B, 0x05, 0x07, 0x0D, 0x09, 0x0C, 0x04, 0x03, 0x02, 0x01, 0x06, 0x08
-    };
+    // BLE login PIN. The heater answers every pre-auth query with a 0x0C
+    // "authenticate me" frame and drops idle/unauthed clients; it only
+    // streams real telemetry (DP 0x03) once we send the 0x0C login. The
+    // native app defaults to "0000" when no PIN is stored (h8/t.java) — and
+    // the official app never prompts to set one, so this is effectively a
+    // fixed firmware handshake constant.
+    public string BlePin { get; set; } = "0000";
+    private bool _authed;
+    private long _lastLoginSentMs;
+
+    // Echoed device state, captured from each 0x03 status frame so control
+    // commands can replay the heater's current display unit / setpoint.
+    private bool _lastTempUnitF;
+    private int  _lastTargetDisp;   // target temp in the heater's display unit
 
     // --- Lifecycle ---------------------------------------------------
 
@@ -138,6 +145,9 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
     {
         try
         {
+            _authed = false;
+            _lastLoginSentMs = 0;
+
             // Frame 1: timestamp sync (~100ms after CCCD subscribe)
             await Task.Delay(100, ct).ConfigureAwait(false);
             var ts = BuildTimestampSyncFrame();
@@ -145,18 +155,28 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
             var tsRes = await WriteRawAsync(ts).ConfigureAwait(false);
             Log.I("hcalory", $"timestamp writeRaw -> ok={tsRes.Ok} {tsRes.Error}");
 
-            // Frames 2..N: cyclic device-info queries every 300ms
-            int idx = 0;
+            // Frame 2: PIN login. Until the heater accepts it, every query
+            // gets a 0x0C auth-request back and the link is dropped after
+            // ~6-10s. OnNotify resends this while result==00.
+            await Task.Delay(150, ct).ConfigureAwait(false);
+            await SendLoginAsync().ConfigureAwait(false);
+
+            // Steady state: poll the device-status query (subtype 0x00) ~1 Hz,
+            // mirroring the native app's main-screen keepalive (z8.o.d() ->
+            // k2.e.f()). Spraying all 14 subtypes made the heater answer
+            // several with 0x03 frames of DIFFERENT meaning, which the status
+            // parser would misread; subtype 0x00 alone yields the canonical
+            // device-status frame.
+            int tick = 0;
             while (!ct.IsCancellationRequested)
             {
-                await Task.Delay(300, ct).ConfigureAwait(false);
-                byte subtype = InfoQuerySubtypes[idx % InfoQuerySubtypes.Length];
-                var r = await WriteRawAsync(BuildInfoQueryFrame(subtype)).ConfigureAwait(false);
+                await Task.Delay(1000, ct).ConfigureAwait(false);
+                var r = await WriteRawAsync(BuildInfoQueryFrame(0x00)).ConfigureAwait(false);
                 if (!r.Ok)
-                    Log.W("hcalory", $"info query subtype=0x{subtype:X2} FAILED: {r.Error}");
-                else if (idx < 3)
-                    Log.I("hcalory", $"info query subtype=0x{subtype:X2} ok");
-                idx++;
+                    Log.W("hcalory", $"status poll FAILED: {r.Error}");
+                else if (tick < 3)
+                    Log.I("hcalory", "status poll (subtype 0x00) ok");
+                tick++;
             }
         }
         catch (OperationCanceledException) { /* expected on disconnect */ }
@@ -168,56 +188,90 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
 
     // --- Commands ----------------------------------------------------
 
-    // Commands use HCalory's simple-pipeline wire format:
-    //   `00 02 00 01 00 01 00 [DP-HI][DP-LO] [TYPE] [VLEN-BE16] [VALUE...] [CSUM]`
-    //
-    // The earlier "DP 0x0001 enum" attempt was wrong on two counts —
-    // 0x0001 isn't a DP that exists on this heater (it disconnected us
-    // when we tried), and every simple-pipeline native command uses
-    // type 0x00, not 0x04.
-    //
-    // DP 0x0608 is the most plausible "power/mode" target: native k()
-    // at k2/e.java:394 literally builds
-    //   `00 02 00 01 00 01 00 0608 00 00 01 00`
-    // — same shape as a stop command, value 0x00. Values 0x01/0x02/0x03
-    // for start/vent are educated guesses one step from there.
-    //
-    // If start still disconnects, the next thing to try is the full
-    // F() complex-pipeline (DP 0x0B mode/scene frame) — but that needs
-    // a verified scene-id byte which we'll only get from a Frida capture.
+    // CONTROL COMMANDS — derived from the native home controller m7.k.G(),
+    // which maps each mode to a specific k2.e builder (NOT a generic mode-list):
+    //   STANDBY -> e.d()  AUTO -> e.b()  MANUAL -> e.p()  NATURAL_WIND -> e.p()
+    // setTarget (DP 0x06) and gear (DP 0x07) are caller-confirmed from the +/-
+    // handler. start/stop/vent are decompile-exact but NOT yet radio-verified.
 
-    public Task<ProtocolResult> StartAsync()
+    private int UnitWire() => _lastTempUnitF ? 1 : 0;
+
+    // Local clock as [HH, MM, SS, DOW] — the 4-byte value the native mode
+    // builders embed (ISO DOW: Mon=1..Sun=7).
+    private static byte[] ClockBytes()
     {
-        Log.I("hcalory", "user action: START — sending DP 0x0608 type=00 value=01");
-        return WriteRawAsync(BuildSimpleSetFrame(0x06, 0x08, type: 0x00, valueByte: 0x01));
+        var now = DateTime.Now;
+        byte dow = (byte)((int)now.DayOfWeek == 0 ? 7 : (int)now.DayOfWeek);
+        return new[] { (byte)now.Hour, (byte)now.Minute, (byte)now.Second, dow };
     }
 
-    public Task<ProtocolResult> StopAsync()
+    // Complex-pipeline frame, matching the native r()/d()/t()/u() builders in
+    // k2.e (used by all mode switches). Header flag byte (offset 5) is 0x01 for
+    // auto/standby, 0x00 for wind/manual; value excludes the trailing
+    // placeholder (u() overwrites it with the payload checksum).
+    // Layout: 00 02 00 01 00 <flag> <payloadLenBE> | <dpId> 00 <valLenBE> | value | csum
+    private static byte[] BuildComplexFrame(int flag, int dpId, byte[] value)
     {
-        Log.I("hcalory", "user action: STOP — sending DP 0x0608 type=00 value=00 (verified shape from native k())");
-        return WriteRawAsync(BuildSimpleSetFrame(0x06, 0x08, type: 0x00, valueByte: 0x00));
+        var outBuf = new byte[8 + 4 + value.Length + 1];
+        int payloadLen = outBuf.Length - 8;
+        outBuf[0] = 0x00; outBuf[1] = 0x02; outBuf[2] = 0x00; outBuf[3] = 0x01; outBuf[4] = 0x00;
+        outBuf[5] = (byte)flag;
+        outBuf[6] = (byte)((payloadLen >> 8) & 0xFF);
+        outBuf[7] = (byte)(payloadLen & 0xFF);
+        outBuf[8] = (byte)dpId;
+        outBuf[9] = 0x00;
+        outBuf[10] = (byte)((value.Length >> 8) & 0xFF);
+        outBuf[11] = (byte)(value.Length & 0xFF);
+        System.Buffer.BlockCopy(value, 0, outBuf, 12, value.Length);
+        int s = 0;
+        for (int i = 8; i < outBuf.Length - 1; i++) s = (s + outBuf[i]) & 0xFF;
+        outBuf[^1] = (byte)s;
+        return outBuf;
     }
 
-    public Task<ProtocolResult> VentAsync()
+    // POWER / MODE via DP 0x08. The earlier DP 0x05 complex frames were ACKed
+    // but inert on the wire (DP 0x05 is the schedule/scene channel, not mode).
+    // The working control DPs are the low ids: temp 0x06, gear 0x07 (both
+    // confirmed). DP 0x08 — native e.k() = `...0608 00 00 01 00` — is the
+    // power/mode command. Probing value: start=01, stop=00, vent=02.
+    private Task<ProtocolResult> PowerDpAsync(int value, string label)
     {
-        Log.I("hcalory", "user action: VENT — sending DP 0x0608 type=00 value=02");
-        return WriteRawAsync(BuildSimpleSetFrame(0x06, 0x08, type: 0x00, valueByte: 0x02));
+        Log.I("hcalory", $"BTN {label} -> DP08 value=0x{value:X2}");
+        var frame = TuyaBleFrame.EncodeSingleDp(0,
+            new TuyaBleFrame.Dp(0x08, TuyaBleFrame.DpTypeRaw, new[] { (byte)value }));
+        return WriteRawAsync(frame);
+    }
+
+    public Task<ProtocolResult> StartAsync() => PowerDpAsync(0x01, "START HEAT");
+    public Task<ProtocolResult> StopAsync()  => PowerDpAsync(0x00, "STOP HEAT");
+    public Task<ProtocolResult> VentAsync()  => PowerDpAsync(0x02, "BLOWER ONLY");
+
+    private static byte[] Concat(byte[] a, byte[] b)
+    {
+        var r = new byte[a.Length + b.Length];
+        System.Buffer.BlockCopy(a, 0, r, 0, a.Length);
+        System.Buffer.BlockCopy(b, 0, r, a.Length, b.Length);
+        return r;
     }
 
     public Task<ProtocolResult> SetTargetCAsync(int celsius)
     {
-        Log.I("hcalory", $"user action: SET TARGET = {celsius}°C — sending DP 0x0605 type=00");
-        return WriteRawAsync(BuildSimpleSetFrame(0x06, 0x05, type: 0x00, valueByte: (byte)celsius));
+        // Native J(temp, unit): standalone DP 0x06, value = [temp, unit].
+        // Confirmed from the +/- button handler — high-confidence.
+        int disp = _lastTempUnitF ? (int)Math.Round(celsius * 9.0 / 5.0 + 32) : celsius;
+        disp = Math.Clamp(disp, 0, 255);
+        Log.I("hcalory", $"CMD setTarget {celsius}C -> DP0x06 disp={disp} unit={UnitWire()}");
+        var frame = TuyaBleFrame.EncodeSingleDp(0,
+            new TuyaBleFrame.Dp(0x06, TuyaBleFrame.DpTypeRaw, new[] { (byte)disp, (byte)UnitWire() }));
+        return WriteRawAsync(frame);
     }
 
     public async Task<ProtocolResult> SetGearAsync(int gear)
     {
-        // Native I() — set gear via DP 0x0607 with the gear value.
-        // Simple-pipeline, no mode switch needed first (the heater
-        // figures out it's a manual-mode command from the DP id).
-        return await WriteRawAsync(
-            BuildSimpleSetFrame(0x06, 0x07, type: 0x00, valueByte: (byte)gear)
-        ).ConfigureAwait(false);
+        // Native I() — standalone DP 0x07, single-byte gear value.
+        var frame = TuyaBleFrame.EncodeSingleDp(0,
+            new TuyaBleFrame.Dp(0x07, TuyaBleFrame.DpTypeRaw, new[] { (byte)gear }));
+        return await WriteRawAsync(frame).ConfigureAwait(false);
     }
 
     public Task<ProtocolResult> SetAltitudeMAsync(int metres) =>
@@ -399,6 +453,37 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
         return b;
     }
 
+    // Login / authentication frame (k2.e.a() in the decompile):
+    //   00 02 00 01 00 01 00 | 0A | 0C 00 00 05 | 01 <p0> <p1> <p2> <p3> | csum
+    // DP id 0x0C, type 0x00, value = [0x01 login opcode] + 4 PIN digits, one
+    // digit per byte (PIN "0000" -> 00 00 00 00). The heater replies with
+    // another 0x0C carrying result: 00=awaiting, 01=success, 02=wrong.
+    private byte[] BuildLoginFrame(string pin)
+    {
+        var digits = pin.PadLeft(4, '0');
+        digits = digits.Substring(digits.Length - 4);
+        var b = new byte[18];
+        b[0] = 0x00; b[1] = 0x02;
+        b[2] = 0x00; b[3] = 0x01; b[4] = 0x00; b[5] = 0x01; b[6] = 0x00;
+        b[7] = 0x0A;
+        b[8] = 0x0C;            // dpId = auth
+        b[9] = 0x00;            // dpType
+        b[10] = 0x00; b[11] = 0x05;  // value length = 5
+        b[12] = 0x01;          // login opcode
+        for (int i = 0; i < 4; i++) b[13 + i] = (byte)(digits[i] - '0');
+        b[17] = ChecksumPayload(b);
+        return b;
+    }
+
+    private async Task SendLoginAsync()
+    {
+        _lastLoginSentMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var f = BuildLoginFrame(BlePin);
+        Log.I("hcalory", $"TX login pin={BlePin} [{f.Length}B] {Convert.ToHexString(f)}");
+        var r = await WriteRawAsync(f).ConfigureAwait(false);
+        Log.I("hcalory", $"login writeRaw -> ok={r.Ok} {r.Error}");
+    }
+
     // Checksum = sum of payload bytes (offset 8 through N-2) mod 256.
     // Replicates j2.j.b.f() in the decompile.
     private static byte ChecksumPayload(byte[] frame)
@@ -422,6 +507,13 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
         return WriteRawAsync(b);
     }
 
+    /// <summary>Debug: send bytes EXACTLY as given (no checksum recompute).</summary>
+    public Task<ProtocolResult> DebugSendExactAsync(byte[] bytes)
+    {
+        Log.I("hcalory", $"TX exact [{bytes.Length}B] {Convert.ToHexString(bytes)}");
+        return WriteRawAsync(bytes);
+    }
+
     // --- Notification ingest ----------------------------------------
 
     private void OnNotify(GattCharacteristic sender, GattValueChangedEventArgs args)
@@ -433,12 +525,17 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
         RawFrameReceived?.Invoke(bytes);
 
         var frame = TuyaBleFrame.Decode(bytes);
-        if (frame == null) return;
+        if (frame == null)
+        {
+            Log.W("hcalory", "RX frame failed decode (bad checksum/length?) — dropping");
+            return;
+        }
 
         var t = Telemetry;
         bool changed = false;
         foreach (var dp in frame.Dps)
         {
+            if (dp.Id == Dpc.Auth) { HandleAuthDp(dp); continue; }
             var next = ApplyDp(t, dp);
             if (next != null) { t = next; changed = true; }
         }
@@ -449,8 +546,10 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
         }
     }
 
-    private static CommonTelemetry? ApplyDp(CommonTelemetry t, TuyaBleFrame.Dp dp) => dp.Id switch
+    private CommonTelemetry? ApplyDp(CommonTelemetry t, TuyaBleFrame.Dp dp) => dp.Id switch
     {
+        Dpc.Status
+            => ParseDeviceStatus03(t, dp.Value),
         Dpc.Mode when dp.Value.Length > 0
             => t with { Mode = DpModeToCommon(dp.Value[0]) },
         Dpc.TargetTemp when dp.Value.Length == 4
@@ -461,6 +560,89 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
             => t with { AltitudeM = TuyaBleFrame.DpValueInt(dp) },
         _ => null,
     };
+
+    // 0x0C auth-response handler. value = [opCode][..][..][..][..][result].
+    // result: 0x00 awaiting PIN, 0x01 success, 0x02 wrong PIN.
+    private void HandleAuthDp(TuyaBleFrame.Dp dp)
+    {
+        int result = dp.Value.Length >= 6 ? dp.Value[5] : -1;
+        switch (result)
+        {
+            case 0x01:
+                if (!_authed) { _authed = true; Log.I("hcalory", $"AUTH ok (pin={BlePin})"); }
+                break;
+            case 0x02:
+                Log.W("hcalory", $"AUTH FAILED: wrong PIN ({BlePin}). Heater needs its BLE password.");
+                break;
+            case 0x00:
+                if (!_authed &&
+                    DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - _lastLoginSentMs > 2500)
+                {
+                    _ = Task.Run(SendLoginAsync);
+                }
+                break;
+            default:
+                Log.I("hcalory", $"AUTH 0x0C result={result} value={Convert.ToHexString(dp.Value)}");
+                break;
+        }
+    }
+
+    // Faithful port of k2.e.x() — decodes the DP 0x03 device-status payload.
+    // Offsets are into the DP value (v[0] = first value byte). Temperatures
+    // are reported in the heater's CURRENT display unit (v[25]); we convert
+    // to Celsius for CommonTelemetry, which is canonical °C.
+    private CommonTelemetry? ParseDeviceStatus03(CommonTelemetry t, byte[] v)
+    {
+        if (v.Length < 26) return null;
+        int U16(int i) => (v[i] << 8) | v[i + 1];
+
+        int statusByte     = v[8];   // bit-packed: fan/plug/pump + op-state; 0xFF = fault
+        int deviceStateRaw = v[9];   // 00 standby,01 auto-temp,02 manual-gear,03 wind
+        int tempOrGear     = v[10];
+        double voltage     = U16(12) / 10.0;
+        int shellRaw       = U16(15);
+        int ambRaw         = U16(18);
+        double shellDisp   = (v[14] == 0x01 && shellRaw != 0 ? -shellRaw : shellRaw) / 10.0;
+        double ambDisp     = (v[17] == 0x01 && ambRaw  != 0 ? -ambRaw  : ambRaw)  / 10.0;
+        bool   tempUnitF   = v[25] == 0x01;
+        int    altitude    = ((v[20] << 16) | (v[21] << 8) | v[22]) / 10;
+
+        bool fault = statusByte == 0xFF;
+        // operative state from bits 6,7 of the status byte (k2.e.x reverses
+        // the 8-bit string then reads chars 6,7): op = (bit6<<1)|bit7.
+        int opState = (((statusByte >> 6) & 0x01) << 1) | ((statusByte >> 7) & 0x01);
+
+        CommonRunningMode mode =
+            fault                                              ? CommonRunningMode.Fault
+            : (opState == 3 || deviceStateRaw == 0x03)         ? CommonRunningMode.Vent
+            : opState == 1                                     ? CommonRunningMode.Running
+            : opState == 2                                     ? CommonRunningMode.Shutdown  // cooling engine body
+            : (deviceStateRaw == 0x01 || deviceStateRaw == 0x02) ? CommonRunningMode.Running
+            :                                                    CommonRunningMode.Standby;
+
+        double ToC(double disp) => tempUnitF ? (disp - 32.0) * 5.0 / 9.0 : disp;
+
+        bool isGearMode = deviceStateRaw == 0x02;
+        int? errorNum   = fault ? deviceStateRaw : (int?)null;
+
+        // Cache state for command replay (display-unit + setpoint).
+        _lastTempUnitF  = tempUnitF;
+        _lastTargetDisp = tempOrGear;
+
+        return t with
+        {
+            Mode      = mode,
+            ModeLabel = errorNum is int e ? $"Fault E{e:D2}" : null,
+            AmbientC  = ToC(ambDisp),
+            HousingC  = ToC(shellDisp),
+            TargetC   = !isGearMode && tempOrGear > 0 ? ToC(tempOrGear) : t.TargetC,
+            AimGear   = isGearMode ? tempOrGear : t.AimGear,
+            BatteryV  = voltage,
+            AltitudeM = altitude,
+            TempUnitF = tempUnitF,
+            FaultBits = errorNum,
+        };
+    }
 
     private static CommonRunningMode DpModeToCommon(byte v) => v switch
     {
@@ -514,6 +696,8 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
 
     private static class Dpc
     {
+        public const byte Auth       = 0x0C;   // login/auth request+response (PIN)
+        public const byte Status     = 0x03;   // device-status push/response (k2.e.x payload)
         public const byte Mode       = 0x01;
         public const byte TempUnit   = 0x0B;
         public const byte TargetTemp = 0x05;

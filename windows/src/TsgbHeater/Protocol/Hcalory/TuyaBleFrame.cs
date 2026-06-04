@@ -1,23 +1,33 @@
 namespace TsgbHeater.Protocol.Hcalory;
 
-// Tuya BLE frame codec. The protocol is documented at
-// https://developer.tuya.com/en/docs/iot/tuya-ble-sdk-protocol and was
-// cross-checked against the decompiled HCalory app's encoder/decoder
-// (OLDSRC/hcalory/sources/sources/j2/j.java).
+// Tuya-style BLE frame codec, matched byte-for-byte against the live
+// HCalory heater (MAC ...08:E3) and the decompiled app (j2/j.java b.c()
+// decoder, b.f() checksum). The earlier guess at the layout (seq-based
+// header, whole-frame checksum) was wrong on the wire; this is verified.
 //
 // Frame layout (on-the-wire bytes):
 //
-//   pos   bytes   field          meaning
-//   ----  ------  -------------  ----------------------------------
-//   0     1       version        protocol version byte (0x00 in HCalory)
-//   1     1       seq            monotonically incrementing seq id
-//   2     1       cmd0           sub-command byte (often 0x00 for DP)
-//   3     1       cmd1
-//   4     1       cmd2
-//   5     1       flags          status flags
-//   6     2       payloadLen     big-endian length of payload portion
-//   8..   N-2     payload        DP units, each: dpid(1)|dpType(1)|dpLen(2BE)|value(dpLen)
-//   N-1   1       checksum       (sum of preceding bytes) & 0xFF
+//   pos     bytes   field         meaning
+//   ----    ------  ------------  -------------------------------------
+//   0       1       version       0x00
+//   1       1       marker        0x02 app->device (fixed); increments device->app
+//   2..4    3       00 01 00      fixed
+//   5       1       flag          0x01
+//   6..7    2       payloadLen    BE; = N-8, i.e. count of bytes 8..N-1
+//                                 (DP descriptor + value + the checksum byte)
+//   8       1       dpId          data-point id / message type (dispatch key)
+//   9       1       dpType
+//   10..11  2       dpLen         BE length of the value
+//   12..    dpLen   value
+//   N-1     1       checksum      sum(bytes 8..N-2) & 0xFF  (PAYLOAD ONLY,
+//                                 excludes the 7-byte header and itself)
+//
+// Wire facts the docs got wrong:
+//   * checksum covers only bytes 8..N-2, NOT the header.
+//   * payloadLen (6..7) INCLUDES the trailing checksum byte (= N-8), so a
+//     valid frame has raw.Length == 8 + payloadLen.
+//   * the "0A0C"/"0909"/"0E04" tokens in the decompiled command strings are
+//     [payloadLen-lo][dpId] fused, NOT 2-byte dp ids. Real dpId is byte 8.
 //
 // DP types (Tuya spec):
 //   0x00 raw, 0x01 bool, 0x02 value (4B BE int),
@@ -72,17 +82,22 @@ public static class TuyaBleFrame
             p += dp.Value.Length;
         }
 
+        // payloadLen (bytes 6..7) counts the DP bytes PLUS the trailing
+        // checksum byte (= N-8). Header is the fixed native preamble the
+        // heater expects from a central.
         var outBuf = new byte[8 + payload.Length + 1];
-        outBuf[0] = frame.Version;
-        outBuf[1] = frame.Seq;
-        outBuf[2] = frame.Cmd0;
-        outBuf[3] = frame.Cmd1;
-        outBuf[4] = frame.Cmd2;
-        outBuf[5] = frame.Flags;
-        outBuf[6] = (byte)((payload.Length >> 8) & 0xFF);
-        outBuf[7] = (byte)(payload.Length & 0xFF);
+        int payloadLenField = payload.Length + 1;
+        outBuf[0] = 0x00;
+        outBuf[1] = 0x02;
+        outBuf[2] = 0x00;
+        outBuf[3] = 0x01;
+        outBuf[4] = 0x00;
+        outBuf[5] = 0x01;
+        outBuf[6] = (byte)((payloadLenField >> 8) & 0xFF);
+        outBuf[7] = (byte)(payloadLenField & 0xFF);
         Buffer.BlockCopy(payload, 0, outBuf, 8, payload.Length);
-        outBuf[^1] = Checksum(outBuf, 0, outBuf.Length - 1);
+        // Checksum is PAYLOAD ONLY: sum of bytes 8..N-2.
+        outBuf[^1] = Checksum(outBuf, 8, outBuf.Length - 1);
         return outBuf;
     }
 
@@ -93,15 +108,18 @@ public static class TuyaBleFrame
     {
         if (raw.Length < 9) return null;
 
+        // payloadLen at 6..7 counts bytes 8..N-1 (DP bytes + checksum), so a
+        // valid frame has raw.Length == 8 + payloadLen.
         var payloadLen = (raw[6] << 8) | raw[7];
-        if (8 + payloadLen + 1 != raw.Length) return null;
+        if (8 + payloadLen != raw.Length) return null;
 
-        var expected = Checksum(raw, 0, raw.Length - 1);
+        // Checksum is PAYLOAD ONLY: sum of bytes 8..N-2.
+        var expected = Checksum(raw, 8, raw.Length - 1);
         if (expected != raw[^1]) return null;
 
         var dps = new List<Dp>();
         var p = 8;
-        var end = 8 + payloadLen;
+        var end = raw.Length - 1;  // DP region ends before the checksum byte
         while (p < end)
         {
             if (p + 4 > end) return null;

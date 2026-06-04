@@ -20,6 +20,7 @@ import uk.co.twinscrollgridbalancer.tsgbheater.protocol.IHeaterProtocol
 import uk.co.twinscrollgridbalancer.tsgbheater.protocol.ProtocolKind
 import uk.co.twinscrollgridbalancer.tsgbheater.protocol.ProtocolRegistry
 import uk.co.twinscrollgridbalancer.tsgbheater.protocol.heatgenie.HeatGenieProtocol
+import uk.co.twinscrollgridbalancer.tsgbheater.protocol.hcalory.HcaloryProtocol
 
 // Single source of truth for the BLE side. ViewModels observe its flows;
 // HeaterService keeps a reference so the connection survives the activity.
@@ -291,6 +292,17 @@ class BleManager(private val ctx: Context) {
 
     suspend fun sendRaw(bytes: ByteArray): Boolean =
         activeDriver?.sendRaw("", bytes)?.isSuccess == true
+
+    // Debug TX hook for the ADB broadcast probe (DebugTxReceiver). Routes a
+    // hand-crafted frame to the active HCalory driver. exact=true sends the
+    // bytes verbatim; exact=false appends the payload checksum (matching the
+    // native frame format). No-op unless an HCalory link is active.
+    fun debugHcalorySend(frame: ByteArray, exact: Boolean) {
+        val drv = activeDriver as? HcaloryProtocol ?: return
+        scope.launch {
+            if (exact) drv.debugSendExact(frame) else drv.sendRawTestFrame(frame)
+        }
+    }
 
     // --- HeatGenie-specific extras -----------------------------------
     // Each of these requires the active driver to be HeatGenie. For

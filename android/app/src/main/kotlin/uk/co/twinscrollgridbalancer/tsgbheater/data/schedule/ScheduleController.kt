@@ -34,6 +34,11 @@ class ScheduleController(
     private val ble:      BleManager,
     private val store:    ScheduleStore,
     private val settings: AppSettingsStore,
+    // Pro gate. When Pro lapses (e.g. a trial ends) this flips false; the
+    // controller then behaves exactly as if scheduling were switched off,
+    // which includes the one-shot "clear the heater's slots" path so we
+    // don't leave a stale schedule running on a device we no longer manage.
+    private val isProActive: StateFlow<Boolean>,
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -60,8 +65,12 @@ class ScheduleController(
                 settings.scheduleModeEnabled,
                 ble.connectionState,
                 clockTickFlow(),
-            ) { sched, enabled, state, tickNow ->
-                Reconcile(sched, enabled, state, tickNow)
+                isProActive,
+            ) { sched, enabled, state, tickNow, pro ->
+                // Pro is folded into `enabled` so losing entitlement takes the
+                // same disable path (and the same heater-slot clear) as the
+                // user toggling scheduling off.
+                Reconcile(sched, enabled && pro, state, tickNow)
             }.collect { r -> reconcile(r) }
         }
     }

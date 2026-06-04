@@ -1,8 +1,26 @@
+import java.io.File
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.compose.compiler)
+}
+
+// Release signing material lives outside the repo (passwords + keystore on ProtonDrive).
+// local.properties holds the key `tsgbheater.signing.config` pointing at a keystore.properties
+// file. When that's absent the release build stays unsigned so other machines still build.
+val signingProps: Properties? = run {
+    val localProps = rootProject.file("local.properties")
+    if (!localProps.exists()) return@run null
+    val configPath = Properties()
+        .apply { FileInputStream(localProps).use { load(it) } }
+        .getProperty("tsgbheater.signing.config") ?: return@run null
+    val configFile = File(configPath)
+    if (!configFile.exists()) return@run null
+    Properties().apply { FileInputStream(configFile).use { load(it) } }
 }
 
 android {
@@ -13,8 +31,19 @@ android {
         applicationId = "uk.co.twinscrollgridbalancer.tsgbheater"
         minSdk        = 31
         targetSdk     = 35
-        versionCode   = 1
-        versionName   = "0.1.0"
+        versionCode   = 20299
+        versionName   = "0.2.99-RC"
+    }
+
+    signingConfigs {
+        signingProps?.let { props ->
+            create("release") {
+                storeFile = file(props.getProperty("storeFile"))
+                storePassword = props.getProperty("storePassword")
+                keyAlias = props.getProperty("keyAlias")
+                keyPassword = props.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
@@ -24,6 +53,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingProps?.let {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
         debug {
             isDebuggable = true
@@ -79,4 +111,7 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
     implementation(libs.mlkit.barcode.scanning)
+
+    // Google Play Billing — Pro unlock, supporter tiers, yearly subscription.
+    implementation(libs.billing.ktx)
 }

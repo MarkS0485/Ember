@@ -72,6 +72,9 @@ fun DeviceScreen(
     onOpenAdvance: () -> Unit,
     onOpenTimer: () -> Unit,
     onOpenTest: () -> Unit,
+    // Heater test mode is diagnostic tooling — its entry icon only appears
+    // when developer mode is unlocked (About → tap version 7×).
+    showTest: Boolean = false,
 ) {
     val vm: DeviceViewModel = viewModel()
     val ui by vm.ui.collectAsState()
@@ -89,8 +92,10 @@ fun DeviceScreen(
                 IconButton(onClick = onOpenTimer) {
                     Icon(Icons.Filled.Schedule, contentDescription = "Schedule", tint = Color.White)
                 }
-                IconButton(onClick = onOpenTest) {
-                    Icon(Icons.Filled.Science, contentDescription = "Test", tint = Color.White)
+                if (showTest) {
+                    IconButton(onClick = onOpenTest) {
+                        Icon(Icons.Filled.Science, contentDescription = "Test", tint = Color.White)
+                    }
                 }
             },
         )

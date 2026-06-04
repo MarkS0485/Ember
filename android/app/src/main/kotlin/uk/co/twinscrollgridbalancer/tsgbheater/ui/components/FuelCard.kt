@@ -237,10 +237,12 @@ private fun FuelSettingsDialog(
                 OutlinedTextField(value = tankS, onValueChange = { tankS = it },
                     singleLine = true, label = { Text("Tank size (L)") })
                 OutlinedTextField(value = loS, onValueChange = { loS = it },
-                    singleLine = true, label = { Text("Min L/h (gear 1)") })
+                    singleLine = true, label = { Text("Flow at level 1 (L/h)") })
                 OutlinedTextField(value = hiS, onValueChange = { hiS = it },
-                    singleLine = true, label = { Text("Max L/h (gear 10)") })
-                Text("Consumption interpolates linearly across gears 1–10.",
+                    singleLine = true, label = { Text("Flow at level 10 (L/h)") })
+                Text("Enter the fuel flow your heater reports at its lowest (level 1) " +
+                     "and highest (level 10) power. Levels in between are interpolated " +
+                     "linearly.",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

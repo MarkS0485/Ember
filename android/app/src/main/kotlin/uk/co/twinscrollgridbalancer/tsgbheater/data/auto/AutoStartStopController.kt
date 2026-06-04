@@ -29,6 +29,9 @@ class AutoStartStopController(
     private val ble: BleManager,
     private val settings: AppSettingsStore,
     private val boundDevices: BoundDeviceStore,
+    // Pro gate. While false (free tier, or a lapsed trial) the engine
+    // observes telemetry but never issues Start/Stop — it simply holds.
+    private val isProActive: StateFlow<Boolean>,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -52,7 +55,8 @@ class AutoStartStopController(
             ble.connectionState,
             settings.autoRules,
             currentBoundDevice(),
-        ) { tele, state, rules, dev -> Tick(tele, state, rules, dev) }
+            isProActive,
+        ) { tele, state, rules, dev, pro -> Tick(tele, state, rules, dev, pro) }
             .distinctUntilChanged()
             .onEach(::handleTick)
             .launchIn(scope)
@@ -68,9 +72,17 @@ class AutoStartStopController(
         val connection: ConnectionState,
         val rules: uk.co.twinscrollgridbalancer.tsgbheater.data.store.AutoRules,
         val device: BoundDevice?,
+        val pro: Boolean,
     )
 
     private suspend fun handleTick(t: Tick) {
+        // Pro gate. Without entitlement the engine never drives the heater.
+        // We hold (rather than NotApplicable) so the UI can explain why.
+        if (!t.pro) {
+            _lastSignal.value = RuleSignal.Hold("Pro required — unlock to resume auto start/stop")
+            return
+        }
+
         // Only act when we're actually connected — sending writes off-link
         // is a no-op but pollutes logs.
         if (t.connection != ConnectionState.Ready) {

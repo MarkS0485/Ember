@@ -26,6 +26,9 @@ class GroupController(
     ctx: Context,
     private val ble: BleManager,
     private val boundDevices: BoundDeviceStore,
+    // Pro gate. The Groups UI is already locked behind Pro, but guarding the
+    // single broadcast funnel too means a lapsed trial can't fan out commands.
+    private val isProActive: StateFlow<Boolean>,
 ) {
 
     private val sender  = OneShotSender(ctx.applicationContext)
@@ -78,6 +81,11 @@ class GroupController(
         action: String,
         commandBuilder: () -> ByteArray,
     ): List<MemberResult> = mutex.withLock {
+        if (!isProActive.value) {
+            Log.w(TAG, "Group broadcast ignored — Pro required")
+            _progress.value = Progress.Done(group.name, action, emptyList())
+            return@withLock emptyList()
+        }
         val members = group.memberMacs
         if (members.isEmpty()) {
             _progress.value = Progress.Done(group.name, action, emptyList())

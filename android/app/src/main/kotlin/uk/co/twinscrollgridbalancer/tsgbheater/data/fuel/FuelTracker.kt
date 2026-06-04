@@ -32,6 +32,9 @@ class FuelTracker(
     private val ble: BleManager,
     private val devices: BoundDeviceStore,
     private val store: FuelStore,
+    // Pro gate. Fuel tracking (incl. the low-fuel auto-shutdown) is a Pro
+    // feature, so when entitlement is absent we stop integrating telemetry.
+    private val isProActive: StateFlow<Boolean>,
 ) {
 
     enum class AlertLevel { NONE, WARNING, CRITICAL, SHUTDOWN }
@@ -108,6 +111,9 @@ class FuelTracker(
     // --- Internals ----------------------------------------------
 
     private suspend fun onTelemetry(t: HeaterTelemetry) {
+        // No Pro → don't track. (Free users never had fuel tracking, so this
+        // is a feature gate, not a regression of any safety they relied on.)
+        if (!isProActive.value) return
         val mac = ble.activeMac() ?: return
         if (mac != trackedMac) trackedMac = mac
         val device = devices.findByMac(mac) ?: return

@@ -17,7 +17,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -31,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -38,10 +43,17 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import uk.co.twinscrollgridbalancer.tsgbheater.remote.QrScannerActivity
 import uk.co.twinscrollgridbalancer.tsgbheater.ui.components.BrandTopBar
 
+// `onBack` is nullable so this screen can be a top-level destination in
+// Remote-mode (no back arrow) or a sub-page from the Local-mode Me tab
+// (back arrow returns to Me).
+// `onSwitchMode` shows a swap-horizontal action button in the top-right
+// when we're a top-level destination, letting the user flip back to
+// Local mode without digging through settings.
 @Composable
 fun RemotePairScreen(
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onOpenControl: (String) -> Unit,
+    onSwitchMode: (() -> Unit)? = null,
 ) {
     val vm: RemotePairViewModel = viewModel()
     val ui by vm.ui.collectAsState()
@@ -61,6 +73,17 @@ fun RemotePairScreen(
             title    = "Remote",
             subtitle = "Talk to a laptop running the Windows app",
             onBack   = onBack,
+            actions  = if (onSwitchMode != null) {
+                {
+                    IconButton(onClick = onSwitchMode) {
+                        Icon(
+                            imageVector        = Icons.Filled.SwapHoriz,
+                            contentDescription = "Switch mode",
+                            tint               = Color.White,
+                        )
+                    }
+                }
+            } else null,
         )
 
         LazyColumn(

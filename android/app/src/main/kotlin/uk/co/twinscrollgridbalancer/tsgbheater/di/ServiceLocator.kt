@@ -1,8 +1,12 @@
 package uk.co.twinscrollgridbalancer.tsgbheater.di
 
 import android.content.Context
+import uk.co.twinscrollgridbalancer.tsgbheater.billing.BillingManager
 import uk.co.twinscrollgridbalancer.tsgbheater.ble.BleManager
 import uk.co.twinscrollgridbalancer.tsgbheater.data.auto.AutoStartStopController
+import uk.co.twinscrollgridbalancer.tsgbheater.data.entitlement.EntitlementRepository
+import uk.co.twinscrollgridbalancer.tsgbheater.data.entitlement.EntitlementStore
+import uk.co.twinscrollgridbalancer.tsgbheater.data.entitlement.EntitlementWatcher
 import uk.co.twinscrollgridbalancer.tsgbheater.data.fuel.FuelStore
 import uk.co.twinscrollgridbalancer.tsgbheater.data.fuel.FuelTracker
 import uk.co.twinscrollgridbalancer.tsgbheater.data.group.GroupController
@@ -30,6 +34,10 @@ object ServiceLocator {
     lateinit var pairedServers: PairedServerStore       private set
     lateinit var fuelStore:    FuelStore                private set
     lateinit var fuelCtl:      FuelTracker              private set
+    lateinit var billing:      BillingManager           private set
+    lateinit var entitlementStore: EntitlementStore     private set
+    lateinit var entitlements: EntitlementRepository    private set
+    lateinit var entitlementWatcher: EntitlementWatcher private set
 
     fun init(ctx: Context) {
         if (initialised) return
@@ -42,16 +50,31 @@ object ServiceLocator {
         ble.attachBoundDevices(boundDevices)
         settings      = AppSettingsStore(app)
         groups        = GroupStore(app)
-        auto          = AutoStartStopController(ble, settings, boundDevices)
-        groupCtl      = GroupController(app, ble, boundDevices)
+        // Commercial entitlement built up-front: billing client + the
+        // repository that decides whether Pro is active (purchase / sub /
+        // legacy / trial). The repo's init runs the one-time grandfather
+        // grant; connecting billing (below) kicks off product + ownership
+        // queries. Built before the controllers so they can take its
+        // isProActive flow as a gate.
+        billing          = BillingManager(app)
+        entitlementStore = EntitlementStore(app)
+        entitlements     = EntitlementRepository(entitlementStore, billing)
+        // Pro-gated runtime controllers. Each takes isProActive so a free
+        // tier (or a lapsed trial) can't drive the heater.
+        auto          = AutoStartStopController(ble, settings, boundDevices, entitlements.isProActive)
+        groupCtl      = GroupController(app, ble, boundDevices, entitlements.isProActive)
         scheduleStore = ScheduleStore(app)
-        scheduleCtl   = ScheduleController(ble, scheduleStore, settings)
+        scheduleCtl   = ScheduleController(ble, scheduleStore, settings, entitlements.isProActive)
         pairedServers = PairedServerStore(app)
         fuelStore     = FuelStore(app)
-        fuelCtl       = FuelTracker(ble, boundDevices, fuelStore)
+        fuelCtl       = FuelTracker(ble, boundDevices, fuelStore, entitlements.isProActive)
+        // Warns (once) if Pro lapses while automation was actually in use.
+        entitlementWatcher = EntitlementWatcher(app, entitlements, settings, boundDevices)
+        billing.connect()
         auto.start()
         scheduleCtl.start()
         fuelCtl.start()
+        entitlementWatcher.start()
         initialised = true
     }
 }

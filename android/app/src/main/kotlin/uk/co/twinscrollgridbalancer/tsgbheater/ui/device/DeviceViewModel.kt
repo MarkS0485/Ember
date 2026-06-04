@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import uk.co.twinscrollgridbalancer.tsgbheater.ble.ConnectionState
@@ -31,25 +33,44 @@ data class DeviceUiState(
 
 class DeviceViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val ble      = ServiceLocator.ble
-    private val store    = ServiceLocator.boundDevices
-    private val settings = ServiceLocator.settings
-    private val fuelCtl  = ServiceLocator.fuelCtl
+    private val ble          = ServiceLocator.ble
+    private val store        = ServiceLocator.boundDevices
+    private val settings     = ServiceLocator.settings
+    private val fuelCtl      = ServiceLocator.fuelCtl
+    private val entitlements = ServiceLocator.entitlements
 
     private val currentDevice: kotlinx.coroutines.flow.Flow<BoundDevice?> =
         combine(store.all, store.currentMac) { list, mac ->
             list.firstOrNull { it.mac == mac } ?: list.firstOrNull()
         }
 
+    // Fuel tracking is a Pro feature, so the Device-screen card only
+    // surfaces for Pro users. Free users discover it via the Pro menu.
+    private val proGatedFuel: kotlinx.coroutines.flow.Flow<FuelTracker.FuelSnapshot?> =
+        combine(fuelCtl.snapshot, entitlements.isProActive) { snap, pro -> if (pro) snap else null }
+
     val ui: StateFlow<DeviceUiState> = combine(
         ble.connectionState,
         ble.telemetry,
         currentDevice,
         settings.selectedRunMode,
-        fuelCtl.snapshot,
+        proGatedFuel,
     ) { state, telemetry, current, modeWire, fuel ->
         DeviceUiState(state, telemetry, current, wireToMode(modeWire), fuel)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DeviceUiState())
+
+    init {
+        // Keep the fuel snapshot populated for the bound heater even when
+        // it's idle/disconnected (no telemetry ticks to drive a recompute),
+        // so the Device-page fuel card — and its settings cog — are always
+        // reachable, not just mid-burn.
+        viewModelScope.launch {
+            currentDevice
+                .map { it?.mac }
+                .distinctUntilChanged()
+                .collect { mac -> if (mac != null) fuelCtl.refresh(mac) }
+        }
+    }
 
     fun reconnect() {
         viewModelScope.launch {

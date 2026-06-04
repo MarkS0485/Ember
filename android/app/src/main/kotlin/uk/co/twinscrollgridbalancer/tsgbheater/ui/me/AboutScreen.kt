@@ -1,9 +1,11 @@
 package uk.co.twinscrollgridbalancer.tsgbheater.ui.me
 
 import android.content.pm.PackageInfo
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -15,12 +17,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DeveloperMode
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,7 +37,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import uk.co.twinscrollgridbalancer.tsgbheater.di.ServiceLocator
 import uk.co.twinscrollgridbalancer.tsgbheater.ui.components.BrandTopBar
+import uk.co.twinscrollgridbalancer.tsgbheater.ui.theme.ProbeSlate
 import uk.co.twinscrollgridbalancer.tsgbheater.ui.theme.TsgbNavy
 import uk.co.twinscrollgridbalancer.tsgbheater.ui.theme.TsgbRed
 
@@ -38,6 +50,12 @@ fun AboutScreen(onBack: () -> Unit) {
     val pkg: PackageInfo = remember(ctx) {
         ctx.packageManager.getPackageInfo(ctx.packageName, 0)
     }
+    val scope    = rememberCoroutineScope()
+    val settings = remember { ServiceLocator.settings }
+    val devMode by settings.developerMode.collectAsState(initial = false)
+    // Tap the version 7× to reveal developer mode — the standard Android
+    // easter-egg gesture, so it's invisible to normal users.
+    var taps by remember { mutableIntStateOf(0) }
 
     Column(modifier = Modifier) {
         BrandTopBar(
@@ -49,7 +67,30 @@ fun AboutScreen(onBack: () -> Unit) {
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            item { Hero(pkg) }
+            item {
+                Hero(pkg) {
+                    if (devMode) return@Hero
+                    taps++
+                    when {
+                        taps >= 7 -> {
+                            taps = 0
+                            scope.launch { settings.setDeveloperMode(true) }
+                            Toast.makeText(ctx, "Developer mode unlocked", Toast.LENGTH_SHORT).show()
+                        }
+                        taps >= 4 -> {
+                            val left = 7 - taps
+                            Toast.makeText(
+                                ctx,
+                                "$left more tap${if (left == 1) "" else "s"} to unlock developer mode",
+                                Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                    }
+                }
+            }
+            if (devMode) {
+                item { DeveloperCard(onTurnOff = { scope.launch { settings.setDeveloperMode(false) } }) }
+            }
             item {
                 InfoCard("Package", listOf(
                     "Name"    to ctx.packageName,
@@ -73,11 +114,9 @@ fun AboutScreen(onBack: () -> Unit) {
             }
             item {
                 Text(
-                    "TSGB Heater is a community rewrite for hardware whose original " +
-                    "controller app shipped from a vendor that's no longer reachable. " +
-                    "Protocol details were reverse-engineered from the bundled vendor " +
-                    "app; see TSGBHeater/docs/BLE_PROTOCOL.md in the project for the " +
-                    "line-by-line citations.",
+                    "A community-built controller for heater hardware whose original " +
+                    "vendor app is no longer supported. No cloud, no account — " +
+                    "everything runs on your phone over Bluetooth.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 4.dp),
@@ -87,14 +126,51 @@ fun AboutScreen(onBack: () -> Unit) {
     }
 }
 
+// Shown on the About screen once developer mode is unlocked, so there's an
+// obvious, discoverable way back out (the unlock gesture is hidden).
 @Composable
-private fun Hero(pkg: PackageInfo) {
+private fun DeveloperCard(onTurnOff: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(MaterialTheme.colorScheme.surface)
             .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), RoundedCornerShape(14.dp))
+            .padding(start = 16.dp, top = 4.dp, bottom = 4.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Filled.DeveloperMode,
+            contentDescription = null,
+            tint = ProbeSlate,
+            modifier = Modifier.size(24.dp),
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text  = "Developer mode on",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text  = "Diagnostic tools are visible in the Me tab and on the Device screen.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        TextButton(onClick = onTurnOff) { Text("Turn off") }
+    }
+}
+
+@Composable
+private fun Hero(pkg: PackageInfo, onTap: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), RoundedCornerShape(14.dp))
+            .clickable { onTap() }
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
