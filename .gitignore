@@ -19,9 +19,10 @@ captures/
 .externalNativeBuild/
 .cxx/
 
-# Signing material — never commit
+# Signing material — never commit (keys live outside the repo; CI uses secrets)
 *.jks
 *.keystore
+keystore.properties
 google-services.json
 
 # JVM/Gradle daemon crash artifacts
