@@ -1,0 +1,143 @@
+name: Release
+
+# Builds signed release artifacts for both clients and, on a v* tag or published
+# Release, attaches them:
+#   * Android — release APK (signed when secrets are present, else UNSIGNED)
+#   * Windows — self-contained win-x64 portable .zip (binaries Authenticode-signed
+#               when the cert secret is present)
+#
+# The HcaloryTest console harness is not part of the product and is not built.
+
+on:
+  push:
+    tags: [ 'v*' ]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version label for the build (e.g. 0.2.99)'
+        required: true
+        default: '0.2.99'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  android:
+    name: Android · release APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    env:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Decode signing keystore
+        if: ${{ env.ANDROID_KEYSTORE_BASE64 != '' }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+
+      - name: Build release APK
+        run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Collect APK
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/dist"
+          find app/build/outputs/apk/release -name '*.apk' -exec cp {} "$GITHUB_WORKSPACE/dist/" \;
+          ls -l "$GITHUB_WORKSPACE/dist"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: dist/*.apk
+          if-no-files-found: error
+
+  windows:
+    name: Windows · publish (signed)
+    runs-on: windows-latest
+    env:
+      WIN_CODESIGN_PFX_BASE64: ${{ secrets.WIN_CODESIGN_PFX_BASE64 }}
+      WIN_CODESIGN_PFX_PASSWORD: ${{ secrets.WIN_CODESIGN_PFX_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish self-contained (win-x64)
+        run: >
+          dotnet publish windows/src/TsgbHeater/TsgbHeater.csproj
+          -c Release -r win-x64 --self-contained true -p:Platform=x64
+          -o windows/publish/win-x64
+
+      # Authenticode-sign the app binaries. The cert is currently SELF-SIGNED, so
+      # SmartScreen will still warn end users until a CA cert replaces it — just
+      # repoint WIN_CODESIGN_PFX_* and nothing here changes. Timestamped so
+      # signatures outlive the cert. ('UnknownError' = signed but untrusted chain,
+      # which is expected for self-signed; a bad password throws at PFX load.)
+      - name: Sign app binaries (win-x64)
+        if: ${{ env.WIN_CODESIGN_PFX_BASE64 != '' }}
+        shell: pwsh
+        run: |
+          $pfx = Join-Path $env:RUNNER_TEMP 'codesign.pfx'
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WIN_CODESIGN_PFX_BASE64))
+          $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(
+              $pfx, $env:WIN_CODESIGN_PFX_PASSWORD)
+          Get-ChildItem windows/publish/win-x64 -Recurse -Include TsgbHeater.exe,TsgbHeater.dll | ForEach-Object {
+            $r = Set-AuthenticodeSignature -FilePath $_.FullName -Certificate $cert `
+                   -HashAlgorithm SHA256 -TimestampServer 'http://timestamp.digicert.com'
+            Write-Host "signed $($_.Name): $($r.Status)"
+          }
+
+      - name: Zip portable build
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Compress-Archive -Path windows/publish/win-x64/* -DestinationPath dist/TsgbHeater-win-x64.zip -Force
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: dist/TsgbHeater-win-x64.zip
+          if-no-files-found: error
+
+  attach:
+    name: Attach assets to release
+    needs: [android, windows]
+    if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Create / update the GitHub Release and upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            artifacts/**/*.apk
+            artifacts/**/*.zip
