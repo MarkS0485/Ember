@@ -65,7 +65,7 @@ jobs:
           ls -l "$GITHUB_WORKSPACE/dist"
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-apk
           path: dist/*.apk
@@ -116,7 +116,7 @@ jobs:
           Compress-Archive -Path windows/publish/win-x64/* -DestinationPath dist/TsgbHeater-win-x64.zip -Force
 
       - name: Upload Windows artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-build
           path: dist/TsgbHeater-win-x64.zip
@@ -129,11 +129,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download built artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
       - name: Create / update the GitHub Release and upload assets
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
