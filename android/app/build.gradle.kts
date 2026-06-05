@@ -4,7 +4,6 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.compose.compiler)
 }
@@ -25,7 +24,7 @@ val signingProps: Properties? = run {
 
 android {
     namespace   = "uk.co.twinscrollgridbalancer.tsgbheater"
-    compileSdk  = 35
+    compileSdk  = 37
 
     defaultConfig {
         applicationId = "uk.co.twinscrollgridbalancer.tsgbheater"
@@ -66,9 +65,8 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
+    // Kotlin jvmTarget defaults to compileOptions.targetCompatibility (17)
+    // under AGP 9's built-in Kotlin.
     buildFeatures {
         compose = true
     }
