@@ -1,8 +1,7 @@
 name: CI
 
 # Compile-validation only: proves both clients still build on every push / PR.
-# No tests exist yet, and no secrets are needed (the Android *debug* build is
-# unsigned; release signing only kicks in when a keystore is present locally).
+# No tests exist yet, and no secrets are needed.
 # The HcaloryTest console harness is not in the .sln and is left out of CI.
 
 on:

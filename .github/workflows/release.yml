@@ -1,10 +1,9 @@
 name: Release
 
-# Builds signed release artifacts for both clients and, on a v* tag or published
+# Builds release artifacts for both clients and, on a v* tag or published
 # Release, attaches them:
-#   * Android — release APK (signed when secrets are present, else UNSIGNED)
-#   * Windows — self-contained win-x64 portable .zip (binaries Authenticode-signed
-#               when the cert secret is present)
+#   * Android — release APK (unsigned)
+#   * Windows — self-contained win-x64 portable .zip
 #
 # The HcaloryTest console harness is not part of the product and is not built.
 
@@ -34,10 +33,6 @@ jobs:
     defaults:
       run:
         working-directory: android
-    env:
-      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
     steps:
       - uses: actions/checkout@v6
       - name: Set up JDK 17
@@ -48,12 +43,6 @@ jobs:
           cache: gradle
       - name: Make gradlew executable
         run: chmod +x ./gradlew
-
-      - name: Decode signing keystore
-        if: ${{ env.ANDROID_KEYSTORE_BASE64 != '' }}
-        run: |
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
-          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
 
       - name: Build release APK
         run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
@@ -72,11 +61,8 @@ jobs:
           if-no-files-found: error
 
   windows:
-    name: Windows · publish (signed)
+    name: Windows · publish
     runs-on: windows-latest
-    env:
-      WIN_CODESIGN_PFX_BASE64: ${{ secrets.WIN_CODESIGN_PFX_BASE64 }}
-      WIN_CODESIGN_PFX_PASSWORD: ${{ secrets.WIN_CODESIGN_PFX_PASSWORD }}
     steps:
       - uses: actions/checkout@v6
       - name: Set up .NET 10
@@ -89,25 +75,6 @@ jobs:
           dotnet publish windows/src/Ember/Ember.csproj
           -c Release -r win-x64 --self-contained true -p:Platform=x64
           -o windows/publish/win-x64
-
-      # Authenticode-sign the app binaries. The cert is currently SELF-SIGNED, so
-      # SmartScreen will still warn end users until a CA cert replaces it — just
-      # repoint WIN_CODESIGN_PFX_* and nothing here changes. Timestamped so
-      # signatures outlive the cert. ('UnknownError' = signed but untrusted chain,
-      # which is expected for self-signed; a bad password throws at PFX load.)
-      - name: Sign app binaries (win-x64)
-        if: ${{ env.WIN_CODESIGN_PFX_BASE64 != '' }}
-        shell: pwsh
-        run: |
-          $pfx = Join-Path $env:RUNNER_TEMP 'codesign.pfx'
-          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WIN_CODESIGN_PFX_BASE64))
-          $cert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(
-              $pfx, $env:WIN_CODESIGN_PFX_PASSWORD)
-          Get-ChildItem windows/publish/win-x64 -Recurse -Include Ember.exe,Ember.dll | ForEach-Object {
-            $r = Set-AuthenticodeSignature -FilePath $_.FullName -Certificate $cert `
-                   -HashAlgorithm SHA256 -TimestampServer 'http://timestamp.digicert.com'
-            Write-Host "signed $($_.Name): $($r.Status)"
-          }
 
       - name: Zip portable build
         shell: pwsh

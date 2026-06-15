@@ -76,10 +76,7 @@ Requires JDK 17 and the Android SDK (or Android Studio Iguana+). From `android/`
 ./gradlew :app:installDebug      # build + install the debug APK to a connected device
 ```
 
-Release builds are signed only when `local.properties` points
-`ember.signing.config` at a `keystore.properties` file. The keystore and
-passwords are kept outside the repo, so without them the release build simply
-stays unsigned and still compiles on any machine.
+Release builds (`./gradlew :app:assembleRelease`) are produced unsigned.
 
 ### Windows
 
@@ -99,12 +96,10 @@ dotnet run --project src/Ember      # launch the WPF app
 - A Bluetooth 4.0+ radio. On Windows the Microsoft BLE stack must be active
   (the `BthLEEnum` / `Microsoft.Bluetooth.Legacy.LEEnumerator` service running).
 
-## Secrets & signing
+## Secrets
 
-Nothing sensitive is committed. `local.properties`, keystores (`*.jks`,
-`*.keystore`), `google-services.json`, TLS material (`*.pfx` / `*.p12`), and
-paired-client state are all git-ignored, and release signing material lives off
-the repo.
+Nothing sensitive is committed. `local.properties`, `google-services.json`,
+TLS material (`*.pfx` / `*.p12`), and paired-client state are all git-ignored.
 
 ## Safety
 
@@ -115,5 +110,5 @@ and treat remote or automated start-up with appropriate caution.
 
 ## License
 
-Not yet licensed for redistribution — all rights reserved by the author pending
-a `LICENSE` file.
+Licensed under the **GNU General Public License v3.0** — see [LICENSE](LICENSE)
+for the full text.
