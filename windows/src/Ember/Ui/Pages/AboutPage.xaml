@@ -1,0 +1,38 @@
+<UserControl x:Class="Ember.Ui.Pages.AboutPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="clr-namespace:Ember.Ui.Controls"
+             Background="{StaticResource Body0}">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <c:PageHeader Grid.Row="0" Title="About" Subtitle="Ember Windows client"/>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="Ember" Style="{StaticResource H1}"/>
+                        <TextBlock Text="Windows companion to the Android app. Same BLE protocol; same data model." Style="{StaticResource Body}"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="Log file" Style="{StaticResource H2}"/>
+                        <TextBlock x:Name="LogPathLine" Style="{StaticResource Mono}" FontSize="12"/>
+                        <Button Style="{StaticResource OutlinedButton}" Content="Open log folder"
+                                Margin="0,8,0,0" HorizontalAlignment="Left" Click="OnOpenLog"/>
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Source &amp; protocol" Style="{StaticResource H2}"/>
+                        <TextBlock Style="{StaticResource Body}"
+                                   Text="Protocol details documented in docs/BLE_PROTOCOL.md at the project root."/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

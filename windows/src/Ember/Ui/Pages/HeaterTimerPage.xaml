@@ -1,0 +1,61 @@
+<UserControl x:Class="Ember.Ui.Pages.HeaterTimerPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="clr-namespace:Ember.Ui.Controls"
+             xmlns:vm="clr-namespace:Ember.Ui.ViewModels"
+             Background="{StaticResource Body0}">
+    <UserControl.DataContext>
+        <vm:HeaterTimerViewModel/>
+    </UserControl.DataContext>
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <c:PageHeader Grid.Row="0" Title="Heater timer"
+                      Subtitle="What's currently programmed on the controller">
+            <c:PageHeader.ActionContent>
+                <Button Style="{StaticResource OutlinedButton}" Content="Refresh"
+                        Command="{Binding RefreshCommand}"
+                        IsEnabled="{Binding IsReady}"/>
+            </c:PageHeader.ActionContent>
+        </c:PageHeader>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock Style="{StaticResource Caption}" Margin="4,0,0,8">
+                    <Run Text="Last read: "/><Run Text="{Binding LastUpdated}"/>
+                </TextBlock>
+                <ItemsControl ItemsSource="{Binding Slots}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource Card}" Margin="0,0,0,8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding Day}"
+                                               Style="{StaticResource H2}"
+                                               Foreground="{StaticResource EmberNavy}"
+                                               FontFamily="Consolas"
+                                               Margin="0,0,12,0" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource Body}">
+                                            <Run Text="{Binding OnTime}"/>
+                                            <Run Text="  →  "/>
+                                            <Run Text="{Binding OffTime}"/>
+                                        </TextBlock>
+                                        <TextBlock Text="{Binding Mode}" Style="{StaticResource Caption}"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Style="{StaticResource Caption}" Margin="4,8,0,0"
+                           Text="Tap Refresh to read fresh slots. Schedule page is the editor; this view is read-only."/>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

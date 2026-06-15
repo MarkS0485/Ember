@@ -1,0 +1,109 @@
+<UserControl x:Class="Ember.Ui.Pages.MePage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="clr-namespace:Ember.Ui.Controls"
+             Background="{StaticResource Body0}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <c:BrandTopBar Grid.Row="0" Title="Account" Subtitle="Settings · diagnostics · about"/>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="16">
+
+                <c:NavListItem Title="Groups"
+                               Subtitle="Control multiple heaters as one"
+                               Icon="&#xE716;"
+                               Accent="{StaticResource FuelAmber}"
+                               Clicked="OnGroups"
+                               Margin="0,0,0,10"/>
+
+                <c:NavListItem Title="Auto Start / Stop"
+                               Subtitle="App-side rules engine"
+                               Icon="&#xE945;"
+                               Accent="{StaticResource EmberRed}"
+                               Clicked="OnAutoStartStop"
+                               Margin="0,0,0,10"/>
+
+                <c:NavListItem Title="Schedule"
+                               Subtitle="Multiple on/off times per day — app driven"
+                               Icon="&#xE787;"
+                               Accent="{StaticResource FlameOrange}"
+                               Clicked="OnSchedule"
+                               Margin="0,0,0,10"/>
+
+                <c:NavListItem Title="Heater timer (read-only)"
+                               Subtitle="What's currently programmed on the controller"
+                               Icon="&#xE823;"
+                               Accent="{StaticResource FlameOrange}"
+                               Clicked="OnHeaterTimer"
+                               Margin="0,0,0,10"/>
+
+                <c:NavListItem Title="Switches"
+                               Subtitle="Run mode + heater panel temp unit + app toggles"
+                               Icon="&#xE92F;"
+                               Accent="{StaticResource CoolBlue}"
+                               Clicked="OnSwitches"
+                               Margin="0,0,0,10"/>
+
+                <c:NavListItem Title="Advance"
+                               Subtitle="Target temperature + Start-Stop hysteresis sliders"
+                               Icon="&#xE713;"
+                               Accent="{StaticResource EmberNavy}"
+                               Clicked="OnAdvance"
+                               Margin="0,0,0,10"/>
+
+                <c:NavListItem Title="Heater test mode"
+                               Subtitle="Vent / pump / vendor keys / regInfo read"
+                               Icon="&#xE9F5;"
+                               Accent="{StaticResource FuelAmber}"
+                               Clicked="OnTestMode"
+                               Margin="0,0,0,10"/>
+
+                <c:NavListItem Title="Active flags"
+                               Subtitle="Live fault codes from the controller"
+                               Icon="&#xE7BA;"
+                               Accent="{StaticResource EmberRed}"
+                               Clicked="OnFlags"
+                               Margin="0,0,0,10"/>
+
+                <c:NavListItem Title="Debug box"
+                               Subtitle="Live raw frame log (TX/RX)"
+                               Icon="&#xEBE8;"
+                               Accent="{StaticResource ProbeSlate}"
+                               Clicked="OnDebugBox"
+                               Margin="0,0,0,10"/>
+
+                <c:NavListItem Title="Test commands"
+                               Subtitle="Raw BLE frame sender + CRC helper"
+                               Icon="&#xE756;"
+                               Accent="{StaticResource ProbeSlate}"
+                               Clicked="OnTestCmd"
+                               Margin="0,0,0,10"/>
+
+                <c:NavListItem Title="Altitude probe"
+                               Subtitle="SHORT_PARA sweep for a hidden altitude setter"
+                               Icon="&#xE909;"
+                               Accent="{StaticResource ProbeSlate}"
+                               Clicked="OnAltitudeProbe"
+                               Margin="0,0,0,10"/>
+
+                <c:NavListItem Title="Menu reference"
+                               Subtitle="Every command this app sends"
+                               Icon="&#xE82D;"
+                               Accent="{StaticResource FuelAmber}"
+                               Clicked="OnMenuRef"
+                               Margin="0,0,0,10"/>
+
+                <c:NavListItem Title="About"
+                               Subtitle="App version · log location"
+                               Icon="&#xE946;"
+                               Accent="{StaticResource EmberNavy}"
+                               Clicked="OnAbout"
+                               Margin="0,0,0,10"/>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

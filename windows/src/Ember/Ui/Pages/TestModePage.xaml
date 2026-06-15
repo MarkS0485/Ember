@@ -1,0 +1,114 @@
+<UserControl x:Class="Ember.Ui.Pages.TestModePage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="clr-namespace:Ember.Ui.Controls"
+             xmlns:vm="clr-namespace:Ember.Ui.ViewModels"
+             Background="{StaticResource Body0}">
+    <UserControl.DataContext>
+        <vm:TestModeViewModel/>
+    </UserControl.DataContext>
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <c:PageHeader Grid.Row="0" Title="Heater test mode" Subtitle="Component-level dry-run"/>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+
+                <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                    <c:StatusPill HorizontalAlignment="Left"
+                                  Label="{Binding IsReady, Converter={StaticResource BoolToReadyLabel}}"
+                                  Kind="{Binding IsReady, Converter={StaticResource BoolToReadyKind}}"/>
+                </Border>
+
+                <!-- Vent -->
+                <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="Ventilation only" Style="{StaticResource H2}"/>
+                        <TextBlock Style="{StaticResource Caption}"
+                                   Text="Spins the fan without igniting. Clears residual combustion gas after shutdown."/>
+                        <UniformGrid Columns="2" Rows="1" Margin="0,10,0,0">
+                            <Button Style="{StaticResource OutlinedButton}" Content="Start blow"
+                                    Margin="0,0,4,0" IsEnabled="{Binding IsReady}"
+                                    Command="{Binding BlowOnCommand}"/>
+                            <Button Style="{StaticResource OutlinedButton}" Content="Stop"
+                                    Margin="4,0,0,0" IsEnabled="{Binding IsReady}"
+                                    Command="{Binding SendStopCommand}"/>
+                        </UniformGrid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Pump -->
+                <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="Manual oil pump" Style="{StaticResource H2}"/>
+                        <TextBlock Style="{StaticResource Caption}"
+                                   Text="Runs the fuel pump for the chosen duration — used to prime the line after a fuel-system service."/>
+                        <TextBlock Style="{StaticResource Caption}" Foreground="{StaticResource ErrRed}"
+                                   Text="{Binding PumpHint}"
+                                   Visibility="{Binding PumpAllowed, Converter={StaticResource BoolToVisInv}}"/>
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Duration" Style="{StaticResource Body}"
+                                       VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Style="{StaticResource OutlinedButton}" Content="–"
+                                    Padding="14,4" Command="{Binding DecPumpCommand}"/>
+                            <TextBlock Grid.Column="2" Text="{Binding PumpSeconds, StringFormat={}{0}s}"
+                                       FontSize="18" FontWeight="SemiBold"
+                                       VerticalAlignment="Center" Margin="10,0"/>
+                            <Button Grid.Column="3" Style="{StaticResource OutlinedButton}" Content="+"
+                                    Padding="14,4" Command="{Binding IncPumpCommand}"/>
+                        </Grid>
+                        <UniformGrid Columns="2" Rows="1" Margin="0,10,0,0">
+                            <Button Style="{StaticResource OutlinedButton}" Content="Pump on"
+                                    Margin="0,0,4,0" IsEnabled="{Binding PumpAllowed}"
+                                    Command="{Binding PumpOnCommand}"/>
+                            <Button Style="{StaticResource OutlinedButton}" Content="Pump off"
+                                    Margin="4,0,0,0" IsEnabled="{Binding IsReady}"
+                                    Command="{Binding PumpOffCommand}"/>
+                        </UniformGrid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Up/Down -->
+                <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="Vendor up/down keys" Style="{StaticResource H2}"/>
+                        <TextBlock Style="{StaticResource Caption}"
+                                   Text="Replays the front-panel arrow buttons. Context-dependent — does whatever the heater screen would do."/>
+                        <UniformGrid Columns="2" Rows="1" Margin="0,10,0,0">
+                            <Button Style="{StaticResource OutlinedButton}" Content="▲ Up"
+                                    Margin="0,0,4,0" IsEnabled="{Binding IsReady}"
+                                    Command="{Binding ButtonUpCommand}"/>
+                            <Button Style="{StaticResource OutlinedButton}" Content="▼ Down"
+                                    Margin="4,0,0,0" IsEnabled="{Binding IsReady}"
+                                    Command="{Binding ButtonDownCommand}"/>
+                        </UniformGrid>
+                    </StackPanel>
+                </Border>
+
+                <!-- regInfo read -->
+                <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="Force a register read" Style="{StaticResource H2}"/>
+                        <TextBlock Style="{StaticResource Caption}"
+                                   Text="Asks the controller for a fresh regInfoArea snapshot — useful to verify the stream is alive."/>
+                        <Button Style="{StaticResource OutlinedButton}" Content="Read now"
+                                Margin="0,10,0,0" IsEnabled="{Binding IsReady}"
+                                Command="{Binding ReadRegCommand}"/>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Style="{StaticResource Caption}" Foreground="{StaticResource ErrRed}"
+                           Margin="4,4,0,0"
+                           Text="Test commands are unsafe with the heater unattended. Don't leave the pump running dry."/>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark variant — slightly darker ink/surface so the widget still
+         reads against most home-screen wallpapers. -->
+    <color name="widget_surface">#FF1F2937</color>
+    <color name="widget_outline">#FF374151</color>
+    <color name="widget_ink">#FFF1F5F9</color>
+    <color name="widget_ink_mute">#FF94A3B8</color>
+
+    <color name="widget_btn_red">#FFC8102E</color>
+    <color name="widget_btn_blue">#FF2563EB</color>
+    <color name="widget_btn_slate">#FF475569</color>
+    <color name="widget_btn_text">#FFFFFFFF</color>
+</resources>

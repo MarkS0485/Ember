@@ -1,0 +1,45 @@
+# Dependabot - daily, all update types (incl. majors), high PR cap. CI runs on
+# each PR so anything that breaks a build shows up red before merge.
+version: 2
+updates:
+  - package-ecosystem: "gradle"
+    directory: "/android"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 20
+    groups:
+      gradle-minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    labels: ["dependencies", "android"]
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    assignees: ["MarkS0485"]
+  - package-ecosystem: "nuget"
+    directory: "/windows"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 20
+    groups:
+      nuget-minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    labels: ["dependencies", "windows"]
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+    assignees: ["MarkS0485"]
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 20
+    groups:
+      github-actions-all:
+        patterns: ["*"]
+    labels: ["dependencies", "github-actions"]
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    assignees: ["MarkS0485"]

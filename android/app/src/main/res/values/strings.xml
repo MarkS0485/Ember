@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">Ember</string>
+
+    <!-- Home-screen widgets. -->
+    <string name="widget_label">Heater · combo</string>
+    <string name="widget_description">Heater on/off, blower and temperature for the last-paired heater.</string>
+
+    <string name="widget_status_label">Heater · status</string>
+    <string name="widget_status_description">Compact temperature + connection state. Tap to open the app.</string>
+
+    <string name="widget_heater_only_label">Heater · on/off</string>
+    <string name="widget_heater_only_description">Heater ON / OFF buttons with temperature readout.</string>
+
+    <string name="widget_blower_only_label">Heater · blower</string>
+    <string name="widget_blower_only_description">Blower ON / OFF buttons with temperature readout.</string>
+
+    <string name="widget_temp_placeholder">— °C</string>
+    <string name="widget_no_device">No heater paired</string>
+    <string name="widget_heater_on">Heater ON</string>
+    <string name="widget_heater_off">Heater OFF</string>
+    <string name="widget_blower_on">Blower ON</string>
+    <string name="widget_blower_off">Blower OFF</string>
+</resources>
