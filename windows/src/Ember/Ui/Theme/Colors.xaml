@@ -53,7 +53,7 @@
     <SolidColorBrush x:Key="FuelAmber"   Color="{StaticResource FuelAmberColor}"/>
     <SolidColorBrush x:Key="ProbeSlate"  Color="{StaticResource ProbeSlateColor}"/>
 
-    <!-- Brand top-bar gradient: navy → red, same as Android BrandTopBar. -->
+    <!-- Brand top-bar gradient: navy -> red, same as Android BrandTopBar. -->
     <LinearGradientBrush x:Key="BrandTopBarBrush" StartPoint="0,0" EndPoint="1,0">
         <GradientStop Color="{StaticResource EmberNavyColor}" Offset="0.0"/>
         <GradientStop Color="{StaticResource EmberRedColor}"  Offset="1.0"/>

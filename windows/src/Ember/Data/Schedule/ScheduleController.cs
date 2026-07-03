@@ -75,8 +75,8 @@ public sealed class ScheduleController : IAsyncDisposable
         {
             if (_wasEnabled && state == ConnectionState.Ready)
             {
-                // Auto-clear on enabled→disabled transition.
-                Log.I("sched", "Schedule disabled — clearing heater slots");
+                // Auto-clear on enabled->disabled transition.
+                Log.I("sched", "Schedule disabled  -  clearing heater slots");
                 await _ble.WriteTimer(EmptySlots()).ConfigureAwait(false);
             }
             _wasEnabled = false;
@@ -184,7 +184,7 @@ public sealed class ScheduleController : IAsyncDisposable
             if (slot.ModeRaw == ModeOff) continue;
             int slotMin = slot.OnHour * 60 + slot.OnMin;
             if (off == 0 && slotMin <= nowMin) continue;
-            return $"{labels[day]} {slot.OnHour:00}:{slot.OnMin:00} → {slot.OffHour:00}:{slot.OffMin:00}";
+            return $"{labels[day]} {slot.OnHour:00}:{slot.OnMin:00} -> {slot.OffHour:00}:{slot.OffMin:00}";
         }
         return null;
     }

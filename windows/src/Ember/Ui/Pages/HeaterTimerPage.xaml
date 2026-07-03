@@ -43,7 +43,7 @@
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                         <TextBlock Style="{StaticResource Body}">
                                             <Run Text="{Binding OnTime}"/>
-                                            <Run Text="  →  "/>
+                                            <Run Text="  ->  "/>
                                             <Run Text="{Binding OffTime}"/>
                                         </TextBlock>
                                         <TextBlock Text="{Binding Mode}" Style="{StaticResource Caption}"/>

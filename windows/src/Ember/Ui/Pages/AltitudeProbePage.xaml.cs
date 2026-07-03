@@ -25,7 +25,7 @@ public partial class AltitudeProbePage : UserControl
     }
     private void UpdateReadBack(HeaterTelemetry t)
     {
-        AltReadBack.Text = t.AltitudeM is { } v ? $"{v} m" : "—";
+        AltReadBack.Text = t.AltitudeM is { } v ? $"{v} m" : " - ";
     }
 
     private void OnSliderChanged(object? sender, RoutedPropertyChangedEventArgs<double> e)
@@ -61,6 +61,6 @@ public partial class AltitudeProbePage : UserControl
         }
         var bytes = FrameCodec.BuildShortParaProbe(index, d1, d2);
         var ok = await ServiceLocator.Ble.WriteAsync(bytes);
-        ResultLine.Text = ok ? "Sent. Watch altitudeM." : "Send failed — not connected?";
+        ResultLine.Text = ok ? "Sent. Watch altitudeM." : "Send failed  -  not connected?";
     }
 }

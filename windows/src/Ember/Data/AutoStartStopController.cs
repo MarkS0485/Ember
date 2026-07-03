@@ -59,11 +59,11 @@ public sealed class AutoStartStopController : IAsyncDisposable
         long nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         if (nowMs - t.UpdatedAtMs > rules.StaleTelemetrySec * 1000L)
         {
-            Log.I("auto", "Telemetry stale — skipping tick");
+            Log.I("auto", "Telemetry stale  -  skipping tick");
             return;
         }
 
-        // Cooldown — don't act more than once per CooldownSec.
+        // Cooldown  -  don't act more than once per CooldownSec.
         long sinceMs = Environment.TickCount64 - _lastActionTicks;
         if (sinceMs < rules.CooldownSec * 1000L)
         {
@@ -74,11 +74,11 @@ public sealed class AutoStartStopController : IAsyncDisposable
         var batt = t.BatteryV    ?? double.NaN;
         if (double.IsNaN(amb)) return;
 
-        // Battery cutoff is a hard veto — stop if we're below.
+        // Battery cutoff is a hard veto  -  stop if we're below.
         if (rules.BatteryCutoffEnabled && !double.IsNaN(batt) && batt < rules.BatteryCutoffV
             && IsHeating(t.RunningMode))
         {
-            Log.I("auto", $"Battery {batt:F1}V < cutoff {rules.BatteryCutoffV:F1}V — stopping");
+            Log.I("auto", $"Battery {batt:F1}V < cutoff {rules.BatteryCutoffV:F1}V  -  stopping");
             await _ble.SendStop().ConfigureAwait(false);
             _lastActionTicks = Environment.TickCount64;
             return;
@@ -90,13 +90,13 @@ public sealed class AutoStartStopController : IAsyncDisposable
 
         if (tooCold && !IsHeating(t.RunningMode))
         {
-            Log.I("auto", $"Ambient {amb:F1}°C below window — starting");
+            Log.I("auto", $"Ambient {amb:F1} degC below window  -  starting");
             await _ble.SendStart().ConfigureAwait(false);
             _lastActionTicks = Environment.TickCount64;
         }
         else if (tooWarm && IsHeating(t.RunningMode))
         {
-            Log.I("auto", $"Ambient {amb:F1}°C above window — stopping");
+            Log.I("auto", $"Ambient {amb:F1} degC above window  -  stopping");
             await _ble.SendStop().ConfigureAwait(false);
             _lastActionTicks = Environment.TickCount64;
         }

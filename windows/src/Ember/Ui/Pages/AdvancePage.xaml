@@ -27,14 +27,14 @@
                             <TextBlock Grid.Column="0" Text="Target temperature" Style="{StaticResource H2}"/>
                             <TextBlock Grid.Column="1" Style="{StaticResource Mono}" FontSize="18"
                                        Foreground="{StaticResource EmberNavy}"
-                                       Text="{Binding TargetTempC, StringFormat={}{0} °C}"/>
+                                       Text="{Binding TargetTempC, StringFormat={}{0}  degC}"/>
                         </Grid>
                         <Slider Minimum="{Binding TargetMinC}" Maximum="{Binding TargetMaxC}"
                                 Value="{Binding TargetTempC}"
                                 IsSnapToTickEnabled="True" TickFrequency="1"
                                 IsEnabled="{Binding IsReady}" Margin="0,8,0,0"/>
                         <TextBlock Style="{StaticResource Caption}"
-                                   Text="Range 10–35 °C. The heater clamps to its supported range in your current unit."/>
+                                   Text="Range 10-35  degC. The heater clamps to its supported range in your current unit."/>
                     </StackPanel>
                 </Border>
 
@@ -48,14 +48,14 @@
                             <TextBlock Grid.Column="0" Text="Start-Stop hysteresis" Style="{StaticResource H2}"/>
                             <TextBlock Grid.Column="1" Style="{StaticResource Mono}" FontSize="18"
                                        Foreground="{StaticResource EmberNavy}"
-                                       Text="{Binding TempDiffC, StringFormat={}{0} °C}"/>
+                                       Text="{Binding TempDiffC, StringFormat={}{0}  degC}"/>
                         </Grid>
                         <Slider Minimum="{Binding DiffMinC}" Maximum="{Binding DiffMaxC}"
                                 Value="{Binding TempDiffC}"
                                 IsSnapToTickEnabled="True" TickFrequency="1"
                                 IsEnabled="{Binding IsReady}" Margin="0,8,0,0"/>
                         <TextBlock Style="{StaticResource Caption}"
-                                   Text="In Start-Stop mode, how far the heater lets the room drift above target before cutting the burn (3–15 °C)."/>
+                                   Text="In Start-Stop mode, how far the heater lets the room drift above target before cutting the burn (3-15  degC)."/>
                     </StackPanel>
                 </Border>
 

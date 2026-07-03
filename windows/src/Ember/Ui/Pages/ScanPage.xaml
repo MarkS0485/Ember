@@ -73,7 +73,7 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                            <TextBlock Text="No paired heaters yet — scan and bind one on the right."
+                            <TextBlock Text="No paired heaters yet  -  scan and bind one on the right."
                                        Style="{StaticResource Caption}" Margin="0,4,0,0"
                                        Visibility="{Binding Paired.Count, Converter={StaticResource CountZeroToVis}}"/>
                         </StackPanel>

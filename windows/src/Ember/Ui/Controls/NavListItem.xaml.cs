@@ -16,7 +16,7 @@ public partial class NavListItem : UserControl
             new PropertyMetadata(""));
     public static readonly DependencyProperty IconProperty =
         DependencyProperty.Register(nameof(Icon), typeof(string), typeof(NavListItem),
-            new PropertyMetadata(""));    // Settings icon
+            new PropertyMetadata(""));    // Settings icon
     public static readonly DependencyProperty AccentProperty =
         DependencyProperty.Register(nameof(Accent), typeof(Brush), typeof(NavListItem),
             new PropertyMetadata(Brushes.Gray));

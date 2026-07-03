@@ -37,11 +37,11 @@ public sealed partial class DeviceViewModel : ObservableObject
 
     [ObservableProperty] private string _statusLabel  = "Disconnected";
     [ObservableProperty] private string _lastError    = "";
-    [ObservableProperty] private string _modeLabel    = "—";
-    [ObservableProperty] private string _ambientLabel = "— °C";
-    [ObservableProperty] private string _voltsLabel   = "—";
-    [ObservableProperty] private string _altitudeLabel = "—";
-    [ObservableProperty] private string _housingLabel = "—";
+    [ObservableProperty] private string _modeLabel    = " - ";
+    [ObservableProperty] private string _ambientLabel = " -   degC";
+    [ObservableProperty] private string _voltsLabel   = " - ";
+    [ObservableProperty] private string _altitudeLabel = " - ";
+    [ObservableProperty] private string _housingLabel = " - ";
     [ObservableProperty] private string _faultLabel   = "";
     [ObservableProperty] private bool   _isReady;
     [ObservableProperty] private bool   _isHeating;
@@ -133,11 +133,11 @@ public sealed partial class DeviceViewModel : ObservableObject
             StatusLabel = s switch
             {
                 ConnectionState.Ready                => "Connected",
-                ConnectionState.Connecting           => "Connecting…",
-                ConnectionState.DiscoveringServices  => "Discovering services…",
-                ConnectionState.Reconnecting         => "Reconnecting…",
+                ConnectionState.Connecting           => "Connecting...",
+                ConnectionState.DiscoveringServices  => "Discovering services...",
+                ConnectionState.Reconnecting         => "Reconnecting...",
                 ConnectionState.Failed               => "Connection failed",
-                ConnectionState.Scanning             => "Scanning…",
+                ConnectionState.Scanning             => "Scanning...",
                 _                                     => "Disconnected",
             };
             IsReady = s == ConnectionState.Ready;
@@ -149,10 +149,10 @@ public sealed partial class DeviceViewModel : ObservableObject
         RunOnUi(() =>
         {
             ModeLabel     = t.RunningMode.Label();
-            AmbientLabel  = t.AmbientTempC is { } a ? $"{a:0.0} °C" : "— °C";
-            HousingLabel  = t.HousingTempC is { } h ? $"{h:0.0} °C" : "—";
-            VoltsLabel    = t.BatteryV     is { } v ? $"{v:0.0} V"  : "—";
-            AltitudeLabel = t.AltitudeM    is { } z ? $"{z} m"      : "—";
+            AmbientLabel  = t.AmbientTempC is { } a ? $"{a:0.0}  degC" : " -   degC";
+            HousingLabel  = t.HousingTempC is { } h ? $"{h:0.0}  degC" : " - ";
+            VoltsLabel    = t.BatteryV     is { } v ? $"{v:0.0} V"  : " - ";
+            AltitudeLabel = t.AltitudeM    is { } z ? $"{z} m"      : " - ";
             if (t.TargetTempC is { } gC)
             {
                 int gi = (int)Math.Round(gC);
@@ -165,8 +165,8 @@ public sealed partial class DeviceViewModel : ObservableObject
             FaultLabel = faultCount switch
             {
                 0 => "",
-                1 => "1 active fault — see Active flags",
-                _ => $"{faultCount} active faults — see Active flags",
+                1 => "1 active fault  -  see Active flags",
+                _ => $"{faultCount} active faults  -  see Active flags",
             };
         });
     }
@@ -177,9 +177,9 @@ public sealed partial class DeviceViewModel : ObservableObject
     [ObservableProperty] private double _fuelTankLitres = 5.0;
     [ObservableProperty] private double _fuelConsumptionLowLph  = 0.15;
     [ObservableProperty] private double _fuelConsumptionHighLph = 0.55;
-    [ObservableProperty] private string _fuelLabel              = "—";
-    [ObservableProperty] private string _fuelHoursRemainingLabel = "—";
-    [ObservableProperty] private string _fuelCurrentConsumptionLabel = "—";
+    [ObservableProperty] private string _fuelLabel              = " - ";
+    [ObservableProperty] private string _fuelHoursRemainingLabel = " - ";
+    [ObservableProperty] private string _fuelCurrentConsumptionLabel = " - ";
     [ObservableProperty] private string _fuelAlertLabel         = "";
     [ObservableProperty] private string _fuelAlertKind          = "";     // "", "warn", "critical", "shutdown"
 
@@ -259,14 +259,14 @@ public sealed partial class DeviceViewModel : ObservableObject
         double lph = FuelTracker.ConsumptionForGear(gear, s.ConsumptionLowLph, s.ConsumptionHighLph);
         FuelCurrentConsumptionLabel = $"{lph:0.00} L/h @ gear {gear}";
         FuelHoursRemainingLabel = lph > 0
-            ? $"≈ {(s.CurrentLitres / lph):0.0} h remaining"
-            : "—";
+            ? $"~= {(s.CurrentLitres / lph):0.0} h remaining"
+            : " - ";
 
         (FuelAlertLabel, FuelAlertKind) = s.Alert switch
         {
-            FuelTracker.AlertLevel.Warning  => ("Fuel low — refill soon", "warn"),
+            FuelTracker.AlertLevel.Warning  => ("Fuel low  -  refill soon", "warn"),
             FuelTracker.AlertLevel.Critical => ("Fuel critical", "critical"),
-            FuelTracker.AlertLevel.Shutdown => ("Tank near empty — stopping heater", "shutdown"),
+            FuelTracker.AlertLevel.Shutdown => ("Tank near empty  -  stopping heater", "shutdown"),
             _                                => ("", ""),
         };
     }

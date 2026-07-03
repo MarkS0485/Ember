@@ -17,7 +17,7 @@ public sealed partial class SwitchesViewModel : ObservableObject
     [ObservableProperty] private bool _isManual;
     [ObservableProperty] private bool _isStartStop;
     [ObservableProperty] private bool _heaterShowsF;     // mirrors telemetry.tempUnitFahrenheit
-    [ObservableProperty] private string _runModeLabel = "—";
+    [ObservableProperty] private string _runModeLabel = " - ";
     [ObservableProperty] private bool _isReady;
 
     public SwitchesViewModel()

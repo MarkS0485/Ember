@@ -9,7 +9,7 @@ using Ember.Services;
 
 namespace Ember.Api;
 
-// All v1 endpoints. Thin wrappers — every method on HeaterClient /
+// All v1 endpoints. Thin wrappers  -  every method on HeaterClient /
 // ScheduleStore / GroupStore / AppSettings gets a route. Where an action
 // requires an active BLE link we ensure it before firing (idempotent
 // connect with a short wait), and report back what happened.
@@ -68,7 +68,7 @@ public static class ApiEndpoints
         //
         // All fuel endpoints operate on the CURRENT bound device unless
         // ?mac=XX is given. Refill/level/config are idempotent under
-        // repeated calls — useful from a thumb-fat remote.
+        // repeated calls  -  useful from a thumb-fat remote.
 
         app.MapGet("/api/v1/fuel", (string? mac) =>
         {
@@ -367,7 +367,7 @@ public static class ApiEndpoints
 
     // Flatten a FuelSnapshot into a JSON-friendly shape, computing
     // the current consumption rate at the live gear so remote clients
-    // don't have to know about the gear→L/h interpolation themselves.
+    // don't have to know about the gear->L/h interpolation themselves.
     private static object? FuelDto(FuelTracker.FuelSnapshot? snap)
     {
         if (snap == null) return null;

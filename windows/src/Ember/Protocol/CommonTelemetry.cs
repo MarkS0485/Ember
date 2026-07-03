@@ -1,8 +1,8 @@
 namespace Ember.Protocol;
 
 // Protocol-neutral telemetry snapshot. Every field is nullable because
-// different heaters expose different subsets — the UI is expected to
-// show "—" for any field that comes back null.
+// different heaters expose different subsets  -  the UI is expected to
+// show " - " for any field that comes back null.
 //
 // IMPORTANT: this type does NOT yet replace any existing telemetry
 // type. It's the destination shape for the future refactor; right
@@ -26,7 +26,7 @@ public sealed record CommonTelemetry
     public CommonRunningMode Mode       { get; init; } = CommonRunningMode.Unknown;
     public string?           ModeLabel  { get; init; }   // human-readable, possibly localised by driver
 
-    // Temperatures (°C — UI does any °F conversion itself)
+    // Temperatures ( degC  -  UI does any  degF conversion itself)
     public double?  AmbientC  { get; init; }
     public double?  HousingC  { get; init; }
     public double?  IntakeC   { get; init; }
@@ -44,7 +44,7 @@ public sealed record CommonTelemetry
     public int?     AltitudeM   { get; init; }
     public bool?    TempUnitF   { get; init; }
 
-    // Faults — bitfield meaning is driver-specific; UI uses the
+    // Faults  -  bitfield meaning is driver-specific; UI uses the
     // driver's decoder to render labels.
     public int?     FaultBits   { get; init; }
 

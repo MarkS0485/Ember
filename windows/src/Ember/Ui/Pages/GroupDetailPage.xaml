@@ -38,7 +38,7 @@
                     <StackPanel>
                         <TextBlock Text="Group actions" Style="{StaticResource H2}"/>
                         <TextBlock Style="{StaticResource Caption}"
-                                   Text="Each command is fanned out to every member sequentially (connect → fire → next). Slow with many heaters."/>
+                                   Text="Each command is fanned out to every member sequentially (connect -> fire -> next). Slow with many heaters."/>
                         <UniformGrid Columns="2" Rows="2" Margin="0,8,0,0">
                             <Button Style="{StaticResource DangerButton}" Content="Start all"
                                     Margin="0,0,4,4" Click="OnStartAll"/>
@@ -47,7 +47,7 @@
                                     Margin="4,0,0,4" Click="OnStopAll"/>
                             <Button Style="{StaticResource OutlinedButton}" Content="Vent all"
                                     Margin="0,4,4,0" Click="OnVentAll"/>
-                            <Button Style="{StaticResource OutlinedButton}" Content="Set target 20 °C"
+                            <Button Style="{StaticResource OutlinedButton}" Content="Set target 20  degC"
                                     Margin="4,4,0,0" Click="OnTarget20"/>
                         </UniformGrid>
                         <TextBlock x:Name="ResultLine" Style="{StaticResource Caption}" Margin="0,8,0,0"/>

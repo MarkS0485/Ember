@@ -117,19 +117,19 @@ public partial class MainWindow : Window
         var stateLabel = s switch
         {
             ConnectionState.Ready               => "Connected",
-            ConnectionState.Connecting          => "Connecting…",
-            ConnectionState.DiscoveringServices => "Discovering…",
-            ConnectionState.Reconnecting        => "Reconnecting…",
+            ConnectionState.Connecting          => "Connecting...",
+            ConnectionState.DiscoveringServices => "Discovering...",
+            ConnectionState.Reconnecting        => "Reconnecting...",
             ConnectionState.Failed              => "Failed",
-            ConnectionState.Scanning            => "Scanning…",
+            ConnectionState.Scanning            => "Scanning...",
             _                                   => "Disconnected",
         };
-        StatusInline.Text  = name != null ? $"{stateLabel} · {name}" : stateLabel;
+        StatusInline.Text  = name != null ? $"{stateLabel}  {name}" : stateLabel;
         StatusBarText.Text = StatusInline.Text;
         CurrentMacText.Text = mac ?? "";
 
         HeroTempInline.Text = t?.AmbientTempC is { } a
-            ? $"{a:0.0} °C · {t!.RunningMode.Label()}"
+            ? $"{a:0.0}  degC  {t!.RunningMode.Label()}"
             : "";
 
         if (t != null)

@@ -45,11 +45,11 @@ public sealed partial class ScanViewModel : ObservableObject
             StatusLabel = s switch
             {
                 ConnectionState.Ready                => "Connected",
-                ConnectionState.Connecting           => "Connecting…",
-                ConnectionState.DiscoveringServices  => "Discovering…",
-                ConnectionState.Reconnecting         => "Reconnecting…",
+                ConnectionState.Connecting           => "Connecting...",
+                ConnectionState.DiscoveringServices  => "Discovering...",
+                ConnectionState.Reconnecting         => "Reconnecting...",
                 ConnectionState.Failed               => "Failed",
-                ConnectionState.Scanning             => "Scanning…",
+                ConnectionState.Scanning             => "Scanning...",
                 _                                     => "Disconnected",
             };
         });
@@ -87,7 +87,7 @@ public sealed partial class ScanViewModel : ObservableObject
         // Connect on the paired list.
         var name = !string.IsNullOrWhiteSpace(d.Name) ? d.Name! : $"Heater {d.Mac[^5..]}";
         // If the scanner detected the protocol via service UUID, use that.
-        // Otherwise default to HeatGenie — the historical default since
+        // Otherwise default to HeatGenie  -  the historical default since
         // every pre-multi-protocol pairing was a HG heater. User can edit
         // later if mistaken.
         var protocol = d.Protocol ?? Ember.Protocol.ProtocolKind.HeatGenie;

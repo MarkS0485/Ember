@@ -11,7 +11,7 @@
                 <ResourceDictionary Source="Ui/Theme/Styles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- Defaults applied to every control unless overridden — gets
+            <!-- Defaults applied to every control unless overridden  -  gets
                  Segoe UI 12pt everywhere without re-stating it on each
                  TextBlock. -->
             <Style TargetType="Window">

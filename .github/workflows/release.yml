@@ -2,8 +2,8 @@ name: Release
 
 # Builds release artifacts for both clients and, on a v* tag or published
 # Release, attaches them:
-#   * Android — release APK (unsigned)
-#   * Windows — self-contained win-x64 portable .zip
+#   * Android  -  release APK (unsigned)
+#   * Windows  -  self-contained win-x64 portable .zip
 #
 # The HcaloryTest console harness is not part of the product and is not built.
 
@@ -28,7 +28,7 @@ concurrency:
 
 jobs:
   android:
-    name: Android · release APK
+    name: Android . release APK
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -61,7 +61,7 @@ jobs:
           if-no-files-found: error
 
   windows:
-    name: Windows · publish
+    name: Windows . publish
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7

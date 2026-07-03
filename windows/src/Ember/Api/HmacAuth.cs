@@ -18,7 +18,7 @@ namespace Ember.Api;
 // Server rejects:
 //   - missing / malformed header
 //   - unknown keyId (or revoked)
-//   - ts skew > ±60 s from server clock
+//   - ts skew > +/-60 s from server clock
 //   - nonce seen within the last 5 minutes
 //   - signature mismatch (constant-time compared)
 //
@@ -67,7 +67,7 @@ public static class HmacAuth
         var skew = Math.Abs(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - tsMs);
         if (skew > MaxSkewMs) return Deny(ctx, $"skew {skew}ms");
 
-        // Replay cache — purge entries older than 5 minutes opportunistically.
+        // Replay cache  -  purge entries older than 5 minutes opportunistically.
         long cutoff = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - 5 * 60_000;
         foreach (var kv in RecentNonces)
             if (kv.Value < cutoff) RecentNonces.TryRemove(kv.Key, out _);

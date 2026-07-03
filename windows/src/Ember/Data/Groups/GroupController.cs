@@ -4,8 +4,8 @@ using Ember.Services;
 namespace Ember.Data.Groups;
 
 // Fans a single command out across all members of a group. The Windows
-// client owns one BLE link at a time, so we sequentially connect →
-// command → wait → next. Slow for big groups; matches the Android
+// client owns one BLE link at a time, so we sequentially connect ->
+// command -> wait -> next. Slow for big groups; matches the Android
 // GroupController's shape.
 public sealed class GroupController
 {

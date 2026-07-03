@@ -30,7 +30,7 @@
                     </StackPanel>
                 </Border>
                 <TextBlock Style="{StaticResource Caption}" Margin="4,12,0,0"
-                           Text="Whitespace, colons, and commas are stripped. Two hex chars per byte. The frame is sent verbatim — use Compute CRC to recompute the trailing 2 bytes."/>
+                           Text="Whitespace, colons, and commas are stripped. Two hex chars per byte. The frame is sent verbatim  -  use Compute CRC to recompute the trailing 2 bytes."/>
             </StackPanel>
         </ScrollViewer>
     </Grid>

@@ -8,7 +8,7 @@ namespace Ember.Data;
 // and we don't want to thrash the bound-devices JSON on every change.
 //
 // Storage: a single JSON object at %APPDATA%\Ember\fuel.json,
-// rewritten lazily — see FuelTracker's persist cadence (every ~30s
+// rewritten lazily  -  see FuelTracker's persist cadence (every ~30s
 // plus on every state-change boundary).
 public sealed class FuelStore
 {

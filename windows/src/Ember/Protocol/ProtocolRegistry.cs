@@ -16,7 +16,7 @@ public static class ProtocolRegistry
     public static IReadOnlyList<ProtocolKind> All { get; } =
         Enum.GetValues<ProtocolKind>();
 
-    /// <summary>Capabilities for a kind without instantiating the driver — UI gating.</summary>
+    /// <summary>Capabilities for a kind without instantiating the driver  -  UI gating.</summary>
     public static HeaterCapabilities CapabilitiesOf(ProtocolKind kind) => kind switch
     {
         ProtocolKind.HeatGenie => HeaterCapabilities.HeatGenie,
@@ -33,7 +33,7 @@ public static class ProtocolRegistry
     };
 
     /// <summary>
-    /// Build a driver instance. Cheap — drivers don't open any radio
+    /// Build a driver instance. Cheap  -  drivers don't open any radio
     /// resources until <see cref="IHeaterProtocol.ConnectAsync"/> is called.
     /// </summary>
     public static IHeaterProtocol Create(ProtocolKind kind) => kind switch

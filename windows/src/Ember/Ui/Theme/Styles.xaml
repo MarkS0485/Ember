@@ -127,7 +127,7 @@
     </Style>
 
     <!-- Borderless button used as the inner element of a segmented
-         control — the parent Border supplies the selected-state colour. -->
+         control  -  the parent Border supplies the selected-state colour. -->
     <Style x:Key="BottomTabButton" TargetType="Button">
         <Setter Property="Background"      Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>

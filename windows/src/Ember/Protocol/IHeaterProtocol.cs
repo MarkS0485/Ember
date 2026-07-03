@@ -6,8 +6,8 @@ namespace Ember.Protocol;
 // this interface without knowing which protocol is on the wire.
 //
 // Lifecycle: drivers own their own connection state. The same instance
-// can be told to ConnectAsync → use → DisconnectAsync → reconnect.
-// Closing means "drop the reference and let GC handle it" — no Dispose
+// can be told to ConnectAsync -> use -> DisconnectAsync -> reconnect.
+// Closing means "drop the reference and let GC handle it"  -  no Dispose
 // to keep the contract small (impls can still implement IDisposable
 // privately if they need to).
 //
@@ -41,7 +41,7 @@ public interface IHeaterProtocol
     event Action<CommonTelemetry>? TelemetryChanged;
 
     /// <summary>
-    /// Raw notification frames as they arrive — for the Debug Box page.
+    /// Raw notification frames as they arrive  -  for the Debug Box page.
     /// Drivers without raw frames simply never fire this event; UI gates
     /// on <see cref="HeaterCapabilities.HasRawFrameStream"/>.
     /// </summary>

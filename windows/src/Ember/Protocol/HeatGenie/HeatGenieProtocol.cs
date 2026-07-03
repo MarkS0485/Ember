@@ -22,7 +22,7 @@ public sealed class HeatGenieProtocol : IHeaterProtocol
 
     public CommonTelemetry Telemetry { get; private set; } = CommonTelemetry.Empty;
 
-    // Suppress "event is never used" warnings — these fire after the
+    // Suppress "event is never used" warnings  -  these fire after the
     // refactor; today they're declared so callers can subscribe early.
     private void _suppressUnusedWarnings()
     {

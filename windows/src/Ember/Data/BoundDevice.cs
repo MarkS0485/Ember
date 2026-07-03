@@ -2,7 +2,7 @@ using Ember.Protocol;
 
 namespace Ember.Data;
 
-// Mirror of android/.../data/store/BoundDevice.kt — same shape so a future
+// Mirror of android/.../data/store/BoundDevice.kt  -  same shape so a future
 // sync feature can move records between phones and the laptop trivially.
 //
 // The Protocol field drives which driver HeaterClient instantiates when

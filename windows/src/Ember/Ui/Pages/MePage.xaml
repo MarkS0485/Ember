@@ -8,7 +8,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
-        <c:BrandTopBar Grid.Row="0" Title="Account" Subtitle="Settings · diagnostics · about"/>
+        <c:BrandTopBar Grid.Row="0" Title="Account" Subtitle="Settings  diagnostics  about"/>
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="16">
 
@@ -27,7 +27,7 @@
                                Margin="0,0,0,10"/>
 
                 <c:NavListItem Title="Schedule"
-                               Subtitle="Multiple on/off times per day — app driven"
+                               Subtitle="Multiple on/off times per day  -  app driven"
                                Icon="&#xE787;"
                                Accent="{StaticResource FlameOrange}"
                                Clicked="OnSchedule"
@@ -97,7 +97,7 @@
                                Margin="0,0,0,10"/>
 
                 <c:NavListItem Title="About"
-                               Subtitle="App version · log location"
+                               Subtitle="App version  log location"
                                Icon="&#xE946;"
                                Accent="{StaticResource EmberNavy}"
                                Clicked="OnAbout"

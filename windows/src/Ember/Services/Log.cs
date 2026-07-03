@@ -2,7 +2,7 @@ using System.IO;
 
 namespace Ember.Services;
 
-// Tiny file logger — writes everything to %APPDATA%\Ember\log.txt so
+// Tiny file logger  -  writes everything to %APPDATA%\Ember\log.txt so
 // we have something to grep when the BLE link refuses to come up. The
 // HeaterClient is the busiest writer; the UI mirrors important entries
 // into the status row via HeaterClient.LastError.
@@ -31,7 +31,7 @@ public static class Log
                 : "?";
             File.WriteAllText(Path,
                 $"=== {asmName} v{asmVer} (built {built}) ===\n" +
-                $"[{DateTime.Now:O}] session start — log open\n");
+                $"[{DateTime.Now:O}] session start  -  log open\n");
         }
         catch { /* never let the logger throw into hot paths */ }
     }

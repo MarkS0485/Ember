@@ -4,19 +4,19 @@ using Ember.Data;
 namespace Ember.Services;
 
 // Estimates how much fuel is left in the tank by watching telemetry and
-// integrating consumption(gear) × time while the heater is burning.
+// integrating consumption(gear) x time while the heater is burning.
 //
-// The model is intentionally simple: linear gear→consumption map taken
+// The model is intentionally simple: linear gear->consumption map taken
 // from the manual (0.15..0.55 L/h across 10 gears by default; each
 // heater can override). Real consumption fluctuates with altitude,
-// glow-plug state, fuel viscosity, ambient temp etc. — but for "have I
+// glow-plug state, fuel viscosity, ambient temp etc.  -  but for "have I
 // got enough to make it through the night" this is plenty accurate,
 // and we top up the level manually when we refill anyway.
 //
 // Thresholds (raised through events so the UI can decide presentation):
-//   ≤ 1.00 L  → Warning
-//   ≤ 0.50 L  → Critical
-//   ≤ 0.25 L  → Shutdown — we additionally call SendStop() so the
+//   <= 1.00 L  -> Warning
+//   <= 0.50 L  -> Critical
+//   <= 0.25 L  -> Shutdown  -  we additionally call SendStop() so the
 //                heater goes through its proper cool-down cycle before
 //                the pump actually runs the tank dry.
 //
@@ -50,7 +50,7 @@ public sealed class FuelTracker : IAsyncDisposable
     // the user with duplicate warnings.
     private readonly Dictionary<string, AlertLevel> _lastAlert = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Fired whenever the level changes meaningfully (≥10 ml delta) or alert state changes.</summary>
+    /// <summary>Fired whenever the level changes meaningfully (>=10 ml delta) or alert state changes.</summary>
     public event Action<FuelSnapshot>? SnapshotChanged;
 
     /// <summary>Fired ONCE per crossing of an alert threshold (debounced until level recovers).</summary>
@@ -68,7 +68,7 @@ public sealed class FuelTracker : IAsyncDisposable
         if (_cts != null) return;
         _cts = new CancellationTokenSource();
         _ble.TelemetryChanged += OnTelemetry;
-        // Backup tick — flushes the store and re-evaluates even if no
+        // Backup tick  -  flushes the store and re-evaluates even if no
         // telemetry has come in (covers the "heater idle on the link" case).
         _loopTask = Task.Run(() => BackgroundLoop(_cts.Token));
     }
@@ -125,7 +125,7 @@ public sealed class FuelTracker : IAsyncDisposable
         RaiseSnapshot(mac);
     }
 
-    // --- Gear → consumption -----------------------------------------
+    // --- Gear -> consumption -----------------------------------------
 
     /// <summary>L/hour at gear [gear] (1..10), linearly interpolated between low/high.</summary>
     public static double ConsumptionForGear(int gear, double lowLph, double highLph)
@@ -165,7 +165,7 @@ public sealed class FuelTracker : IAsyncDisposable
         }
         else
         {
-            // Not burning — don't accumulate consumption. Still tick the
+            // Not burning  -  don't accumulate consumption. Still tick the
             // alert state in case a refill changed it via the UI.
             EvaluateAlerts(mac);
         }
@@ -173,7 +173,7 @@ public sealed class FuelTracker : IAsyncDisposable
 
     private async Task BackgroundLoop(CancellationToken ct)
     {
-        // Persist every 30s — keeps fuel.json fresh without thrashing
+        // Persist every 30s  -  keeps fuel.json fresh without thrashing
         // the disk on every telemetry frame.
         try
         {
@@ -205,7 +205,7 @@ public sealed class FuelTracker : IAsyncDisposable
         var previous = _lastAlert.TryGetValue(mac, out var prev) ? prev : AlertLevel.None;
         if (snap.Alert == previous) return;
 
-        // Only RAISE on a worsening crossing — recovery (level climbs
+        // Only RAISE on a worsening crossing  -  recovery (level climbs
         // back) silently resets the debounce. Avoids spam on the way up.
         if ((int)snap.Alert > (int)previous)
         {
@@ -213,7 +213,7 @@ public sealed class FuelTracker : IAsyncDisposable
             AlertRaised?.Invoke(snap);
             if (snap.Alert == AlertLevel.Shutdown)
             {
-                Log.W("fuel", $"{mac}: fuel critical ({snap.CurrentLitres:F2} L) — sending stop");
+                Log.W("fuel", $"{mac}: fuel critical ({snap.CurrentLitres:F2} L)  -  sending stop");
                 // Fire-and-forget. Stop goes through the heater's normal
                 // cool-down cycle which is the right shape for a
                 // running-out-of-fuel shutdown.
@@ -222,7 +222,7 @@ public sealed class FuelTracker : IAsyncDisposable
         }
         else
         {
-            // Level climbed (refill) — reset the floor so the next
+            // Level climbed (refill)  -  reset the floor so the next
             // worsening crossing can re-raise.
             _lastAlert[mac] = snap.Alert;
         }

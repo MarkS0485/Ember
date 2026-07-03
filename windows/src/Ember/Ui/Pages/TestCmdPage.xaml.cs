@@ -15,7 +15,7 @@ public partial class TestCmdPage : UserControl
         {
             var bytes = FrameCodec.FromHex(HexBox.Text);
             var ok = await ServiceLocator.Ble.WriteAsync(bytes);
-            ResultLine.Text = ok ? $"Sent {bytes.Length} B" : "Send failed — not connected?";
+            ResultLine.Text = ok ? $"Sent {bytes.Length} B" : "Send failed  -  not connected?";
         }
         catch (Exception ex)
         {

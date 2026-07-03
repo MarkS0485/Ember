@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Dark variant — slightly darker ink/surface so the widget still
+    <!-- Dark variant  -  slightly darker ink/surface so the widget still
          reads against most home-screen wallpapers. -->
     <color name="widget_surface">#FF1F2937</color>
     <color name="widget_outline">#FF374151</color>

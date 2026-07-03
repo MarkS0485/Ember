@@ -33,7 +33,7 @@ public static class RunningModeExt
         RunningMode.Ventilation     => "Ventilating",
         RunningMode.StartStopActive => "Auto on",
         RunningMode.StartStopConfig => "Auto configured",
-        _                            => "—",
+        _                            => " - ",
     };
 
     public static RunningMode FromWire(int v) => v switch
@@ -77,7 +77,7 @@ public sealed record HeaterTelemetry(
 // same MAC so the UI can render a live signal bar.
 //
 // Protocol is filled in by the scanner when it sees a known service UUID
-// in the advert. null means "unknown" — could be a HeatGenie that hasn't
+// in the advert. null means "unknown"  -  could be a HeatGenie that hasn't
 // advertised its service yet, could be an unrelated device. The bind
 // flow lets the user override.
 public sealed record DiscoveredDevice(
@@ -106,5 +106,5 @@ public sealed record WriteTimerSlot(
     int OffHour,
     int OffMin);
 
-// One raw BLE frame in either direction — used by the debug-box console.
+// One raw BLE frame in either direction  -  used by the debug-box console.
 public sealed record RawFrame(bool Tx, byte[] Bytes, long TimestampMs);

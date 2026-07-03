@@ -120,10 +120,10 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <Button Grid.Column="0" Style="{StaticResource OutlinedButton}"
-                                    Content="−" Padding="14,4" FontSize="16"
+                                    Content="-" Padding="14,4" FontSize="16"
                                     Command="{Binding NudgeTargetCommand}" CommandParameter="-1"
                                     IsEnabled="{Binding IsReady}"/>
-                            <TextBlock Grid.Column="1" Text="{Binding TargetTempC, StringFormat={}{0} °C}"
+                            <TextBlock Grid.Column="1" Text="{Binding TargetTempC, StringFormat={}{0}  degC}"
                                        FontSize="20" FontWeight="SemiBold"
                                        Foreground="{StaticResource InkHi}"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -205,7 +205,7 @@
                                     Content="Refill" Padding="10,3" Margin="0,0,6,0"
                                     Command="{Binding OpenRefillCommand}"/>
                             <Button Grid.Column="2" Style="{StaticResource OutlinedButton}"
-                                    Content="⚙" Padding="8,3"
+                                    Content="" Padding="8,3"
                                     Command="{Binding OpenFuelSettingsCommand}"/>
                         </Grid>
 
@@ -233,7 +233,7 @@
                         <TextBlock Text="{Binding FuelCurrentConsumptionLabel}"
                                    Style="{StaticResource Caption}" Margin="0,6,0,0"/>
 
-                        <!-- Alert banner — colour-coded via FuelAlertKind.
+                        <!-- Alert banner  -  colour-coded via FuelAlertKind.
                              Only visible when there's an active alert. -->
                         <Border CornerRadius="6" Padding="10,6" Margin="0,8,0,0"
                                 Background="{Binding FuelAlertKind, Converter={StaticResource FuelAlertKindToBrush}}"
@@ -330,7 +330,7 @@
 
                         <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource Body}" Text="Target"/>
                         <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource Mono}"
-                                   Text="{Binding TargetTempC, StringFormat={}{0} °C}"/>
+                                   Text="{Binding TargetTempC, StringFormat={}{0}  degC}"/>
 
                         <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource Body}" Text="Gear"/>
                         <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource Mono}" Text="{Binding GearLabel}"/>

@@ -43,7 +43,7 @@
                             <TextBlock Grid.Column="0" Text="Setpoint" Style="{StaticResource H2}"/>
                             <TextBlock Grid.Column="1" Style="{StaticResource Mono}" FontSize="16"
                                        Foreground="{StaticResource EmberNavy}"
-                                       Text="{Binding SetpointC, StringFormat={}{0} °C}"/>
+                                       Text="{Binding SetpointC, StringFormat={}{0}  degC}"/>
                         </Grid>
                         <Slider Minimum="5" Maximum="30" Value="{Binding SetpointC}"
                                 IsSnapToTickEnabled="True" TickFrequency="1" Margin="0,6,0,8"/>
@@ -56,7 +56,7 @@
                             <TextBlock Grid.Column="0" Text="Margin" Style="{StaticResource H2}"/>
                             <TextBlock Grid.Column="1" Style="{StaticResource Mono}" FontSize="16"
                                        Foreground="{StaticResource EmberNavy}"
-                                       Text="{Binding MarginC, StringFormat={}± {0} °C}"/>
+                                       Text="{Binding MarginC, StringFormat={}+/- {0}  degC}"/>
                         </Grid>
                         <Slider Minimum="1" Maximum="10" Value="{Binding MarginC}"
                                 IsSnapToTickEnabled="True" TickFrequency="1" Margin="0,6,0,0"/>
@@ -75,7 +75,7 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="Cold floor"/>
                             <TextBlock Grid.Column="1" Style="{StaticResource Mono}"
-                                       Text="{Binding AmbientStartC, StringFormat={}{0} °C}"/>
+                                       Text="{Binding AmbientStartC, StringFormat={}{0}  degC}"/>
                         </Grid>
                         <Slider Minimum="-5" Maximum="15" Value="{Binding AmbientStartC}"
                                 IsSnapToTickEnabled="True" TickFrequency="1" Margin="0,2,0,8"/>
@@ -86,7 +86,7 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="Warm ceiling"/>
                             <TextBlock Grid.Column="1" Style="{StaticResource Mono}"
-                                       Text="{Binding AmbientStopC, StringFormat={}{0} °C}"/>
+                                       Text="{Binding AmbientStopC, StringFormat={}{0}  degC}"/>
                         </Grid>
                         <Slider Minimum="15" Maximum="40" Value="{Binding AmbientStopC}"
                                 IsSnapToTickEnabled="True" TickFrequency="1" Margin="0,2,0,0"/>

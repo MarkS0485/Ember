@@ -6,7 +6,7 @@ using Ember.Services;
 
 namespace Ember.Ui.ViewModels;
 
-// Debounced slider commits. Mirrors the Android AdvanceScreen — a drag
+// Debounced slider commits. Mirrors the Android AdvanceScreen  -  a drag
 // across the range only emits one BLE write 400 ms after the user lets go.
 public sealed partial class AdvanceViewModel : ObservableObject
 {

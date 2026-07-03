@@ -29,7 +29,7 @@ public sealed class CountZeroToVisibilityConverter : IValueConverter
         => throw new NotSupportedException();
 }
 
-// Selected → secondary accent; otherwise transparent. Used by the
+// Selected -> secondary accent; otherwise transparent. Used by the
 // run-mode segmented control on DevicePage.
 public sealed class BoolToSelectedBgConverter : IValueConverter
 {
@@ -80,7 +80,7 @@ public sealed class StringNotEmptyToVisibilityConverter : IValueConverter
 
 // Maps the FuelTracker alert-level string ("warn" / "critical" /
 // "shutdown") to a banner background. Empty/unknown collapses to
-// transparent — the banner itself is hidden via StringNotEmptyToVis.
+// transparent  -  the banner itself is hidden via StringNotEmptyToVis.
 public sealed class FuelAlertKindToBrushConverter : IValueConverter
 {
     public object Convert(object? value, Type t, object? param, CultureInfo c)
@@ -124,10 +124,10 @@ public sealed class StatusLabelToKindConverter : IValueConverter
         return s switch
         {
             "Connected"      => StatusKind.Online,
-            "Connecting…"    => StatusKind.Stale,
-            "Discovering…"   => StatusKind.Stale,
-            "Reconnecting…"  => StatusKind.Stale,
-            "Scanning…"      => StatusKind.Stale,
+            "Connecting..."    => StatusKind.Stale,
+            "Discovering..."   => StatusKind.Stale,
+            "Reconnecting..."  => StatusKind.Stale,
+            "Scanning..."      => StatusKind.Stale,
             "Failed"         => StatusKind.Warning,
             _                => StatusKind.Offline,
         };

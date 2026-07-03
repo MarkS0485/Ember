@@ -47,7 +47,7 @@ public partial class GroupDetailPage : UserControl
     private async void OnTarget20(object sender, RoutedEventArgs e)
     {
         var n = await ServiceLocator.GroupCtl.ApplyAsync(_id, ble => ble.SetTargetTemp(20));
-        ResultLine.Text = $"Target 20 °C set on {n} heater(s)";
+        ResultLine.Text = $"Target 20  degC set on {n} heater(s)";
     }
     private void OnDelete(object sender, RoutedEventArgs e)
     {

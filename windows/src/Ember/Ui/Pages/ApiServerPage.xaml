@@ -107,15 +107,15 @@
                                                 <StackPanel Grid.Column="0">
                                                     <TextBlock>
                                                         <Run Text="{Binding Label}" FontWeight="SemiBold"/>
-                                                        <Run Text="  ·  "/>
+                                                        <Run Text="    "/>
                                                         <Run Text="{Binding KeyId}" FontFamily="Cascadia Mono, Consolas"/>
                                                     </TextBlock>
                                                     <TextBlock Style="{StaticResource Caption}">
                                                         <Run Text="paired "/>
                                                         <Run Text="{Binding PairedAtMs}"/>
-                                                        <Run Text="  ·  last seen "/>
+                                                        <Run Text="    last seen "/>
                                                         <Run Text="{Binding LastSeenAtMs}"/>
-                                                        <Run Text="  ·  revoked: "/>
+                                                        <Run Text="    revoked: "/>
                                                         <Run Text="{Binding Revoked}"/>
                                                     </TextBlock>
                                                 </StackPanel>

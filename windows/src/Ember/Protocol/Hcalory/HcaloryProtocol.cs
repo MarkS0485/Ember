@@ -5,7 +5,7 @@ using Ember.Services;
 
 namespace Ember.Protocol.Hcalory;
 
-// HCalory (Tuya BLE) driver. Owns its own BluetoothLEDevice — separate
+// HCalory (Tuya BLE) driver. Owns its own BluetoothLEDevice  -  separate
 // from HeaterClient's HeatGenie session because the GATT profile, write
 // semantics and frame codec are all different.
 //
@@ -13,7 +13,7 @@ namespace Ember.Protocol.Hcalory;
 // try legacy first; fall back to custom. Write type: WriteWithoutResponse.
 //
 // Post-connect: Tuya BLE devices drop idle clients after ~6s. The native
-// HCalory app never goes silent — it pumps a timestamp sync immediately
+// HCalory app never goes silent  -  it pumps a timestamp sync immediately
 // after subscribing, then info-query frames every 300ms in a round-robin
 // over a fixed subtype list. We mirror that behaviour here. See
 // OLDSRC/hcalory/POST_CONNECT_SEQUENCE.md for the captured frame layouts.
@@ -21,7 +21,7 @@ namespace Ember.Protocol.Hcalory;
 // Frame format is hand-crafted bytes (see BuildTimestampSyncFrame and
 // BuildInfoQueryFrame). The wire layout has a 7-byte fixed header, a
 // 16-bit DP id, 1-byte type, 16-bit length, then the value. Not stock
-// Tuya BLE — HCalory-specific.
+// Tuya BLE  -  HCalory-specific.
 public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
 {
     public ProtocolKind       Kind         => ProtocolKind.Hcalory;
@@ -44,7 +44,7 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
     // BLE login PIN. The heater answers every pre-auth query with a 0x0C
     // "authenticate me" frame and drops idle/unauthed clients; it only
     // streams real telemetry (DP 0x03) once we send the 0x0C login. The
-    // native app defaults to "0000" when no PIN is stored (h8/t.java) — and
+    // native app defaults to "0000" when no PIN is stored (h8/t.java)  -  and
     // the official app never prompts to set one, so this is effectively a
     // fixed firmware handshake constant.
     public string BlePin { get; set; } = "0000";
@@ -93,7 +93,7 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
                 GattClientCharacteristicConfigurationDescriptorValue.Notify).AsTask().ConfigureAwait(false);
             if (ccc != GattCommunicationStatus.Success)
                 return ProtocolResult.Fail($"enable-notify CCCD write returned {ccc}");
-            Log.I("hcalory", "CCCD subscribed — starting post-connect sequence");
+            Log.I("hcalory", "CCCD subscribed  -  starting post-connect sequence");
 
             IsConnected = true;
             _connectedAtMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -101,7 +101,7 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
             Log.I("hcalory", $"=== CONNECTED to {mac} @ {DateTime.Now:HH:mm:ss.fff} ===");
 
             // Kick off the timestamp sync + 300ms info-query loop. Fire-
-            // and-forget — it runs on its own task until DisconnectAsync
+            // and-forget  -  it runs on its own task until DisconnectAsync
             // cancels it. Without this, the heater drops us at ~6s.
             _keepaliveCts = new CancellationTokenSource();
             _ = Task.Run(() => RunPostConnectSequenceAsync(_keepaliveCts.Token));
@@ -188,7 +188,7 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
 
     // --- Commands ----------------------------------------------------
 
-    // CONTROL COMMANDS — derived from the native home controller m7.k.G(),
+    // CONTROL COMMANDS  -  derived from the native home controller m7.k.G(),
     // which maps each mode to a specific k2.e builder (NOT a generic mode-list):
     //   STANDBY -> e.d()  AUTO -> e.b()  MANUAL -> e.p()  NATURAL_WIND -> e.p()
     // setTarget (DP 0x06) and gear (DP 0x07) are caller-confirmed from the +/-
@@ -196,7 +196,7 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
 
     private int UnitWire() => _lastTempUnitF ? 1 : 0;
 
-    // Local clock as [HH, MM, SS, DOW] — the 4-byte value the native mode
+    // Local clock as [HH, MM, SS, DOW]  -  the 4-byte value the native mode
     // builders embed (ISO DOW: Mon=1..Sun=7).
     private static byte[] ClockBytes()
     {
@@ -232,7 +232,7 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
     // POWER / MODE via DP 0x08. The earlier DP 0x05 complex frames were ACKed
     // but inert on the wire (DP 0x05 is the schedule/scene channel, not mode).
     // The working control DPs are the low ids: temp 0x06, gear 0x07 (both
-    // confirmed). DP 0x08 — native e.k() = `...0608 00 00 01 00` — is the
+    // confirmed). DP 0x08  -  native e.k() = `...0608 00 00 01 00`  -  is the
     // power/mode command. Probing value: start=01, stop=00, vent=02.
     private Task<ProtocolResult> PowerDpAsync(int value, string label)
     {
@@ -257,7 +257,7 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
     public Task<ProtocolResult> SetTargetCAsync(int celsius)
     {
         // Native J(temp, unit): standalone DP 0x06, value = [temp, unit].
-        // Confirmed from the +/- button handler — high-confidence.
+        // Confirmed from the +/- button handler  -  high-confidence.
         int disp = _lastTempUnitF ? (int)Math.Round(celsius * 9.0 / 5.0 + 32) : celsius;
         disp = Math.Clamp(disp, 0, 255);
         Log.I("hcalory", $"CMD setTarget {celsius}C -> DP0x06 disp={disp} unit={UnitWire()}");
@@ -268,7 +268,7 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
 
     public async Task<ProtocolResult> SetGearAsync(int gear)
     {
-        // Native I() — standalone DP 0x07, single-byte gear value.
+        // Native I()  -  standalone DP 0x07, single-byte gear value.
         var frame = TuyaBleFrame.EncodeSingleDp(0,
             new TuyaBleFrame.Dp(0x07, TuyaBleFrame.DpTypeRaw, new[] { (byte)gear }));
         return await WriteRawAsync(frame).ConfigureAwait(false);
@@ -276,7 +276,7 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
 
     public Task<ProtocolResult> SetAltitudeMAsync(int metres) =>
         // Native H() altitude is DP 0x0909 with sign byte + 2-byte magnitude
-        // + unit byte — more involved than a 1-byte enum. Send via the
+        // + unit byte  -  more involved than a 1-byte enum. Send via the
         // raw helper so the magnitude doesn't get truncated.
         WriteRawAsync(BuildAltitudeFrame(metres));
 
@@ -309,7 +309,7 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
         var ch = _writeChar;
         if (ch == null)
         {
-            Log.W("hcalory", $"TX dropped — not connected. wanted to send [{bytes.Length}B] {Convert.ToHexString(bytes)}");
+            Log.W("hcalory", $"TX dropped  -  not connected. wanted to send [{bytes.Length}B] {Convert.ToHexString(bytes)}");
             return ProtocolResult.Fail("not connected");
         }
         try
@@ -360,7 +360,7 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
     // Altitude via DP 0x0909, type 0x00, value bytes = sign + |altM|_BE16 + unit.
     // From native H(int, fVar) in k2/e.java:218. Sign byte 0x01 = negative
     // (altitude below sea level), 0x00 = positive. Unit byte 0x00 = m,
-    // 0x01 = ft — we always submit metres so the heater stores the canonical
+    // 0x01 = ft  -  we always submit metres so the heater stores the canonical
     // SI value; display conversion happens UI-side.
     //
     // Layout (17 bytes incl. checksum):
@@ -392,17 +392,17 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
 
     // --- Raw frame builders (HCalory wire format) -------------------
     //
-    // Reverse-engineered from k2/e.java + j2/j.java in the decompile —
+    // Reverse-engineered from k2/e.java + j2/j.java in the decompile  - 
     // earlier interpretations were off:
     //
-    //   * Info query payload is 8 zero bytes, NOT 18 — total wire 22B
+    //   * Info query payload is 8 zero bytes, NOT 18  -  total wire 22B
     //   * Every frame ends with a 1-byte checksum: (sum of bytes 8..N-1) & 0xFF
     //   * Timestamp value is HH MM SS DOW when on the BD39 service family
     //     (which we always hit on this heater), NOT a Unix epoch.
     //   * DOW is Monday=1..Sunday=7 (ISO), not Java Calendar's 1=Sun..7=Sat.
     //
     // The `a()` wrapper in j2.j.b takes a hex string ending at byte N-1
-    // and appends the checksum hex char pair → wire bytes 0..N. We bake
+    // and appends the checksum hex char pair -> wire bytes 0..N. We bake
     // that into the builders.
 
     private static byte[] BuildTimestampSyncFrame()
@@ -527,7 +527,7 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
         var frame = TuyaBleFrame.Decode(bytes);
         if (frame == null)
         {
-            Log.W("hcalory", "RX frame failed decode (bad checksum/length?) — dropping");
+            Log.W("hcalory", "RX frame failed decode (bad checksum/length?)  -  dropping");
             return;
         }
 
@@ -587,10 +587,10 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
         }
     }
 
-    // Faithful port of k2.e.x() — decodes the DP 0x03 device-status payload.
+    // Faithful port of k2.e.x()  -  decodes the DP 0x03 device-status payload.
     // Offsets are into the DP value (v[0] = first value byte). Temperatures
     // are reported in the heater's CURRENT display unit (v[25]); we convert
-    // to Celsius for CommonTelemetry, which is canonical °C.
+    // to Celsius for CommonTelemetry, which is canonical  degC.
     private CommonTelemetry? ParseDeviceStatus03(CommonTelemetry t, byte[] v)
     {
         if (v.Length < 26) return null;
@@ -660,14 +660,14 @@ public sealed class HcaloryProtocol : IHeaterProtocol, IAsyncDisposable
         Log.I("hcalory", $"ConnectionStatusChanged @ {now}: status={sender.ConnectionStatus} for {_currentMac}");
         if (sender.ConnectionStatus == BluetoothConnectionStatus.Disconnected)
         {
-            Log.W("hcalory", $"peer disconnected @ {now} — keepalive cancelled. Connection was alive {(_connectedAtMs > 0 ? (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - _connectedAtMs) : 0)}ms");
+            Log.W("hcalory", $"peer disconnected @ {now}  -  keepalive cancelled. Connection was alive {(_connectedAtMs > 0 ? (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - _connectedAtMs) : 0)}ms");
             _keepaliveCts?.Cancel();
             IsConnected = false;
             ConnectionChanged?.Invoke(false);
         }
     }
 
-    // Timestamp of last successful connect — lets us calculate how long
+    // Timestamp of last successful connect  -  lets us calculate how long
     // we stayed alive each time the peer drops us. Useful for diagnosing
     // whether commands cause an immediate disconnect vs an eventual timeout.
     private long _connectedAtMs;

@@ -29,7 +29,7 @@
                                Foreground="{StaticResource EmberNavy}"/>
                 </StackPanel></Border>
                 <Border Style="{StaticResource Card}" Margin="0,0,0,6"><StackPanel>
-                    <TextBlock Text="Switch to °C / °F" Style="{StaticResource H2}"/>
+                    <TextBlock Text="Switch to  degC /  degF" Style="{StaticResource H2}"/>
                     <TextBlock Text="AA 00 61 08/0A &lt;rand&gt; 00 crcH crcL" Style="{StaticResource Mono}"
                                Foreground="{StaticResource EmberNavy}"/>
                 </StackPanel></Border>
@@ -39,7 +39,7 @@
                     <TextBlock Text="Manual pump run" Style="{StaticResource H2}"/>
                     <TextBlock Text="AA 00 62 &lt;secs&gt; &lt;rand&gt; 00 crcH crcL" Style="{StaticResource Mono}"
                                Foreground="{StaticResource EmberNavy}"/>
-                    <TextBlock Text="Range 5–90 s. Heater only acts in Standby / ManualPump."
+                    <TextBlock Text="Range 5-90 s. Heater only acts in Standby / ManualPump."
                                Style="{StaticResource Caption}"/>
                 </StackPanel></Border>
 
@@ -63,7 +63,7 @@
                     <TextBlock Text="Set wall clock" Style="{StaticResource H2}"/>
                     <TextBlock Text="AA 00 66 03 &lt;day&lt;&lt;5|hour&gt; &lt;min&gt; crcH crcL"
                                Style="{StaticResource Mono}" Foreground="{StaticResource EmberNavy}"/>
-                    <TextBlock Text="Day: Mon=0…Sun=6. Fired automatically on connect." Style="{StaticResource Caption}"/>
+                    <TextBlock Text="Day: Mon=0...Sun=6. Fired automatically on connect." Style="{StaticResource Caption}"/>
                 </StackPanel></Border>
                 <Border Style="{StaticResource Card}" Margin="0,0,0,6"><StackPanel>
                     <TextBlock Text="Set Start-Stop hysteresis" Style="{StaticResource H2}"/>

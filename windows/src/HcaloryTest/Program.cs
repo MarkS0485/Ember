@@ -70,14 +70,14 @@ proto.RawFrameReceived += b =>
 // until we spot the heater's address, then connect. (The WPF app gets this for
 // free by connecting from inside its scan handler; the standalone runner must
 // do it explicitly.)
-Console.WriteLine(">> warming BLE cache (scanning for heater advert)…");
+Console.WriteLine(">> warming BLE cache (scanning for heater advert)...");
 if (!await WarmUpAsync(mac, TimeSpan.FromSeconds(20)))
-    Console.WriteLine("!! never saw the heater advertise — connect will likely fail. (phone still connected? out of range?)");
+    Console.WriteLine("!! never saw the heater advertise  -  connect will likely fail. (phone still connected? out of range?)");
 
 Console.WriteLine($">> ConnectAsync({mac}) ...");
 var r = await proto.ConnectAsync(mac);
 Console.WriteLine($">> result: ok={r.Ok}  err={r.Error}");
-if (!r.Ok) { Console.WriteLine("Connect failed — exiting."); return 1; }
+if (!r.Ok) { Console.WriteLine("Connect failed  -  exiting."); return 1; }
 
 if (legacyHold)
 {
@@ -132,7 +132,7 @@ while ((line = Console.ReadLine()) != null)
     var res = exact
         ? await proto.DebugSendExactAsync(bytes)
         : await proto.SendRawTestFrameAsync(bytes);
-    Console.WriteLine($">> sent ok={res.Ok} err={res.Error} (waiting 2s for STATE…)");
+    Console.WriteLine($">> sent ok={res.Ok} err={res.Error} (waiting 2s for STATE...)");
     await Task.Delay(2000);
     Console.WriteLine($"   now: {lastState}");
 }

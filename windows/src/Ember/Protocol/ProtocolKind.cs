@@ -9,8 +9,8 @@ namespace Ember.Protocol;
 // actually starts using these drivers.
 public enum ProtocolKind
 {
-    /// <summary>Heat Genie diesel heaters — binary frames, CRC-16/XMODEM.</summary>
+    /// <summary>Heat Genie diesel heaters  -  binary frames, CRC-16/XMODEM.</summary>
     HeatGenie,
-    /// <summary>HCalory — Tuya BLE protocol (DP based, byte-sum checksum).</summary>
+    /// <summary>HCalory  -  Tuya BLE protocol (DP based, byte-sum checksum).</summary>
     Hcalory,
 }

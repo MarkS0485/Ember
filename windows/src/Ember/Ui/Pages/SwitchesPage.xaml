@@ -63,7 +63,7 @@
                     <StackPanel>
                         <TextBlock Text="Temperature unit" Style="{StaticResource H2}"/>
                         <TextBlock Style="{StaticResource Caption}"
-                                   Text="Changes how the heater's own panel reads. The app always shows °C; active cell mirrors what the heater is reporting."/>
+                                   Text="Changes how the heater's own panel reads. The app always shows  degC; active cell mirrors what the heater is reporting."/>
                         <Grid Margin="0,8,0,0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition/><ColumnDefinition/>
@@ -72,7 +72,7 @@
                                     Background="{Binding HeaterShowsF, Converter={StaticResource BoolToSelectedBgInv}}">
                                 <Button Style="{StaticResource BottomTabButton}" Padding="0,10"
                                         Command="{Binding SetTempUnitCommand}" CommandParameter="c">
-                                    <TextBlock Text="°C" FontFamily="Consolas" FontSize="16"
+                                    <TextBlock Text=" degC" FontFamily="Consolas" FontSize="16"
                                                Foreground="{Binding HeaterShowsF, Converter={StaticResource BoolToSelectedFgInv}}"
                                                HorizontalAlignment="Center" FontWeight="SemiBold"/>
                                 </Button>
@@ -81,7 +81,7 @@
                                     Background="{Binding HeaterShowsF, Converter={StaticResource BoolToSelectedBg}}">
                                 <Button Style="{StaticResource BottomTabButton}" Padding="0,10"
                                         Command="{Binding SetTempUnitCommand}" CommandParameter="f">
-                                    <TextBlock Text="°F" FontFamily="Consolas" FontSize="16"
+                                    <TextBlock Text=" degF" FontFamily="Consolas" FontSize="16"
                                                Foreground="{Binding HeaterShowsF, Converter={StaticResource BoolToSelectedFg}}"
                                                HorizontalAlignment="Center" FontWeight="SemiBold"/>
                                 </Button>

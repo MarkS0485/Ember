@@ -11,7 +11,7 @@ public sealed partial class TestModeViewModel : ObservableObject
     private readonly HeaterClient _ble = ServiceLocator.Ble;
 
     [ObservableProperty] private bool   _isReady;
-    [ObservableProperty] private string _runMode = "—";
+    [ObservableProperty] private string _runMode = " - ";
     [ObservableProperty] private int    _pumpSeconds = FrameCodec.ManualPumpDefaultSeconds;
     [ObservableProperty] private string _pumpHint = "";
     [ObservableProperty] private bool   _pumpAllowed;
@@ -33,8 +33,8 @@ public sealed partial class TestModeViewModel : ObservableObject
         PumpHint = PumpAllowed
             ? "Pump ready."
             : rm == RunningMode.Unknown
-                ? "Waiting for telemetry — pump unlocks once the heater reports a state."
-                : $"Pump only runs in Standby. Heater is in “{rm.Label()}” — stop the burner first.";
+                ? "Waiting for telemetry  -  pump unlocks once the heater reports a state."
+                : $"Pump only runs in Standby. Heater is in {rm.Label()}  -  stop the burner first.";
     }
 
     [RelayCommand] private async Task BlowOn()      { if (IsReady) await _ble.BlowOn(); }

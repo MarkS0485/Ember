@@ -15,7 +15,7 @@
 
                 <Border Background="{StaticResource ErrRed}" CornerRadius="14" Padding="14" Margin="0,0,0,10">
                     <TextBlock Foreground="White" TextWrapping="Wrap"
-                               Text="Vendor SHORT_PARA indices are 0–4 only. This screen sweeps higher indices to see if regInfo.altitudeM changes. Most likely the controller ignores them."/>
+                               Text="Vendor SHORT_PARA indices are 0-4 only. This screen sweeps higher indices to see if regInfo.altitudeM changes. Most likely the controller ignores them."/>
                 </Border>
 
                 <Border Style="{StaticResource Card}" Margin="0,0,0,10">
@@ -28,7 +28,7 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="altitudeM" Style="{StaticResource Body}"/>
                             <TextBlock x:Name="AltReadBack" Grid.Column="1" Style="{StaticResource Mono}"
-                                       Foreground="{StaticResource EmberNavy}" FontSize="15" Text="—"/>
+                                       Foreground="{StaticResource EmberNavy}" FontSize="15" Text=" - "/>
                         </Grid>
                     </StackPanel>
                 </Border>

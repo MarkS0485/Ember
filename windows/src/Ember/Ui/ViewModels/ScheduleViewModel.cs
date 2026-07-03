@@ -56,7 +56,7 @@ public sealed partial class ScheduleViewModel : ObservableObject
             (StatusLabel, StatusDetail) = _ctl.Status switch
             {
                 ScheduleStatus.Disabled         => ("Disabled", "Turn on schedule mode above to start pushing events."),
-                ScheduleStatus.WaitingForLink x => ("Waiting for heater", $"{x.EventCount} event(s) ready — will sync when the link is up."),
+                ScheduleStatus.WaitingForLink x => ("Waiting for heater", $"{x.EventCount} event(s) ready  -  will sync when the link is up."),
                 ScheduleStatus.WriteFailed   x  => ("Last write failed", "Will retry on the next minute tick."),
                 ScheduleStatus.Synced        x  => ("Synced", x.NextEventSummary != null ? $"Next: {x.NextEventSummary}" : "No upcoming events."),
                 _                                => ("Disabled", ""),

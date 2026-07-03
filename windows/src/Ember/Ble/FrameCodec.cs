@@ -30,9 +30,9 @@ public static class FrameCodec
     private const int CMD_OFF            = 2;
     private const int CMD_UP             = 3;
     private const int CMD_DOWN           = 4;
-    private const int CMD_SWITCH_TEMP_FC = 8;   // switch panel to °C (was in °F)
+    private const int CMD_SWITCH_TEMP_FC = 8;   // switch panel to  degC (was in  degF)
     private const int CMD_BLOW_ON        = 9;
-    private const int CMD_SWITCH_TEMP_CF = 10;  // switch panel to °F (was in °C)
+    private const int CMD_SWITCH_TEMP_CF = 10;  // switch panel to  degF (was in  degC)
     private const int CMD_OIL_PUMP_ON    = 11;
     private const int CMD_OIL_PUMP_OFF   = 12;  // NB: vendor's manual-pump-off path uses CMD_OFF instead.
 
@@ -80,7 +80,7 @@ public static class FrameCodec
         Eight(OP_CMD, (byte)CMD_OIL_PUMP_OFF, Nonce(), 0);
 
     // Timed manual pump. The CMD_OIL_PUMP_ON button alone won't spin the
-    // pump — the controller waits for this opcode with a duration.
+    // pump  -  the controller waits for this opcode with a duration.
     public static byte[] BuildManualPumpRun(int seconds)
     {
         int s = Math.Clamp(seconds, ManualPumpMinSeconds, ManualPumpMaxSeconds);
@@ -218,7 +218,7 @@ public static class FrameCodec
         o[2] = (byte)OP_WRITE_AREA;
         o[3] = Nonce();
         // Address bytes 4..6 zero; byte 7 = area tag (vendor sends longAddr
-        // reversed; [0xF5,0,0,0] → [0,0,0,0xF5]).
+        // reversed; [0xF5,0,0,0] -> [0,0,0,0xF5]).
         o[4] = 0; o[5] = 0; o[6] = 0;
         o[7] = (byte)areaTag;
         Buffer.BlockCopy(payload, 0, o, 8, payload.Length);
@@ -307,7 +307,7 @@ public static class FrameCodec
             aimGear = p[32] & 0xFF;
             int tval = p[33] & 0xFF;
             // Stored in the heater's current display unit (tempUnitF bit).
-            // Convert F→C so app code is always Celsius.
+            // Convert F->C so app code is always Celsius.
             targetC = tempUnitF ? (tval - 32) * 5.0 / 9.0 : (double)tval;
         }
 
@@ -349,7 +349,7 @@ public static class FrameCodec
             int off    = i * 5;
             int rawMod = p[off] & 0xFF;
             int modeRaw = rawMod;
-            // Vendor folds raw 1/2 → display 3, ≥4 → display 4; we expose
+            // Vendor folds raw 1/2 -> display 3, >=4 -> display 4; we expose
             // the raw value as-is here so the editor can round-trip.
             slots[i] = new TimerSlot(
                 DayIndex: i,

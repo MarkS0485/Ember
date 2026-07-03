@@ -86,7 +86,7 @@ public sealed class HeaterClient : IAsyncDisposable
 
     /// <summary>
     /// Wire the BoundDeviceStore in. Must be called once before the first
-    /// ConnectAsync — the dispatcher uses it to learn which protocol to
+    /// ConnectAsync  -  the dispatcher uses it to learn which protocol to
     /// speak for a given MAC.
     /// </summary>
     public void AttachBoundDevices(BoundDeviceStore store) => _boundDevices = store;
@@ -194,7 +194,7 @@ public sealed class HeaterClient : IAsyncDisposable
         try
         {
             // Look up the bound device's protocol. Unknown MAC defaults to
-            // HeatGenie (the historical default — every pre-multi-protocol
+            // HeatGenie (the historical default  -  every pre-multi-protocol
             // pairing was a HG heater).
             var kind = _boundDevices?.All.FirstOrDefault(b =>
                 b.Mac.Equals(mac, StringComparison.OrdinalIgnoreCase))?.Protocol
@@ -233,7 +233,7 @@ public sealed class HeaterClient : IAsyncDisposable
 
     private async Task ConnectViaAltAsync(IHeaterProtocol drv, string mac)
     {
-        // Tear down the HG session if one is open — both protocols share
+        // Tear down the HG session if one is open  -  both protocols share
         // the same exported state machine, so we can only have one active
         // at a time.
         await TearDownAsync().ConfigureAwait(false);
@@ -254,9 +254,9 @@ public sealed class HeaterClient : IAsyncDisposable
     }
 
     // Synthesize a HeatGenie-shaped HeaterTelemetry from CommonTelemetry
-    // so existing ViewModels (DevicePage, AdvancePage, …) work unchanged
+    // so existing ViewModels (DevicePage, AdvancePage, ...) work unchanged
     // when an HCalory device is connected. Fields the source doesn't
-    // publish stay null; the UI already renders "—" for those.
+    // publish stay null; the UI already renders " - " for those.
     private static HeaterTelemetry ToHeaterTelemetry(CommonTelemetry t) => new(
         OutletTempC:        t.OutletC,
         TargetTempC:        t.TargetC,
@@ -306,7 +306,7 @@ public sealed class HeaterClient : IAsyncDisposable
         if (nowTicks < _cooldownUntilTicks)
         {
             var remain = (_cooldownUntilTicks - nowTicks) / 1000;
-            Fail($"Cooldown active — heater dropped us recently, wait {remain}s");
+            Fail($"Cooldown active  -  heater dropped us recently, wait {remain}s");
             return;
         }
 
@@ -380,7 +380,7 @@ public sealed class HeaterClient : IAsyncDisposable
             Fail($"GetGattServicesAsync threw: {ex.GetType().Name}: {ex.Message}");
             return;
         }
-        Log.I("ble", $"GetGattServicesAsync → Status={svcResult.Status} " +
+        Log.I("ble", $"GetGattServicesAsync -> Status={svcResult.Status} " +
                      $"ProtocolError={svcResult.ProtocolError} Services={svcResult.Services.Count}");
         if (svcResult.Status != GattCommunicationStatus.Success)
         {
@@ -495,8 +495,8 @@ public sealed class HeaterClient : IAsyncDisposable
             => "Device is not reachable. It may be out of range, asleep, or already connected to another phone. " +
                "Power-cycle the heater, then try again.",
         GattCommunicationStatus.AccessDenied
-            => "Windows refused the GATT access — most likely the heater needs to be paired through " +
-               "Windows Settings → Bluetooth & devices first. Open Settings, add the heater, then retry.",
+            => "Windows refused the GATT access  -  most likely the heater needs to be paired through " +
+               "Windows Settings -> Bluetooth & devices first. Open Settings, add the heater, then retry.",
         GattCommunicationStatus.ProtocolError
             => $"GATT protocol error 0x{protoErr:X2}. The heater rejected our handshake.",
         _ => $"GetGattServicesAsync failed with {s}",
@@ -541,13 +541,13 @@ public sealed class HeaterClient : IAsyncDisposable
 
     private void OnConnectionStatusChanged(BluetoothLEDevice sender, object args)
     {
-        Log.I("ble", $"ConnectionStatusChanged → {sender.ConnectionStatus}");
+        Log.I("ble", $"ConnectionStatusChanged -> {sender.ConnectionStatus}");
         if (sender.ConnectionStatus == BluetoothConnectionStatus.Disconnected)
         {
             if (State == ConnectionState.Ready)
             {
                 _cooldownUntilTicks = Environment.TickCount64 + CooldownMs;
-                Log.I("ble", $"Mid-session drop — applying {CooldownMs}ms cooldown");
+                Log.I("ble", $"Mid-session drop  -  applying {CooldownMs}ms cooldown");
             }
             _ = TearDownAsync();
         }

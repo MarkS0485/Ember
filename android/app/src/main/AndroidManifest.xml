@@ -53,7 +53,7 @@
 
         <!-- Debug relay so `adb shell am broadcast` can reach the unexported
              foreground service. Only handles the diagnostic actions defined
-             in HeaterService — those are no-ops without an active BLE link
+             in HeaterService  -  those are no-ops without an active BLE link
              anyway, so leaving this exported is low-risk. -->
         <receiver
             android:name=".service.DebugBridgeReceiver"

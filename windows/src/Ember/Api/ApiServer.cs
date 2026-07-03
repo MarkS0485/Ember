@@ -35,7 +35,7 @@ public sealed class ApiServer
     {
         PairedClients = new PairedClientStore();
         // Compute the cert thumbprint EAGERLY. The pairing QR must carry it
-        // even when the server isn't running yet — users have a habit of
+        // even when the server isn't running yet  -  users have a habit of
         // clicking Generate before clicking Start, and an empty `t=` in the
         // URI gives Android a "cert pin mismatch (expected: <blank>)" that
         // looks like a TLS problem when really it's a UX-ordering one.
